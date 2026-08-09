@@ -15,7 +15,8 @@ Criar um espaço seguro onde alunos possam:
 
 **Versão:** 2.0.0
 **Status:** Em Desenvolvimento  
-**Hospedagem:** GitHub Pages  
+**Site:** https://singularnaodorme.com.br
+**Hospedagem:** GitHub Pages com domínio próprio
 **Banco de Dados:** Supabase  
 **Tecnologias:** React, Vite, Node.js, Supabase Edge Functions
 
@@ -25,8 +26,15 @@ Criar um espaço seguro onde alunos possam:
 singularnaodorme/
 ├── src/
 │   ├── App.jsx                  # Rotas e telas React
+│   ├── Admin.jsx                # Painel da coordenação
+│   ├── adminApi.js              # Cliente autenticado do painel
+│   ├── admin.css                # Estilos do painel
 │   ├── supabase.js              # Cliente HTTP das Edge Functions
 │   └── styles.css               # Estilos da aplicação
+├── supabase/
+│   ├── functions/               # APIs públicas e administrativas
+│   └── migrations/              # Schema, RLS e políticas de acesso
+├── public/CNAME                 # Domínio próprio do GitHub Pages
 ├── package.json                 # Scripts Node.js
 ├── vite.config.js               # Exportação estática para Pages
 ├── .github/
@@ -77,68 +85,45 @@ git push origin main
   - Em **Build and deployment**, selecione **GitHub Actions**
    - Clique em Save
 
-3. Pronto! Seu site estará em `https://seu-usuario.github.io/singularnaodorme`
+3. Configure o domínio `singularnaodorme.com.br` nas opções do GitHub Pages.
 
 O workflow automático em `.github/workflows/deploy.yml` fará o deploy a cada push para `main`.
 
 ## 🔧 Configuração do Supabase
 
-### Setup Inicial
+### Setup local
 
 1. Crie uma conta em [supabase.com](https://supabase.com)
 2. Crie um novo projeto
-3. Obtenha a URL e a chave pública no Project Settings
-4. Crie o arquivo `supabase.config.js`:
+3. Obtenha a URL e a chave publicável no Project Settings.
+4. Vincule o Supabase CLI ao projeto e aplique as migrations em `supabase/migrations/`.
+5. Implante as funções em `supabase/functions/`.
 
-```javascript
-import { createClient } from '@supabase/supabase-js'
+Nunca exponha a service role no frontend. Ela é usada somente pelas Edge Functions.
 
-const SUPABASE_URL = 'sua-url-aqui'
-const SUPABASE_ANON_KEY = 'sua-chave-publica-aqui'
+### Painel administrativo
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+O painel está disponível em `https://singularnaodorme.com.br/#/adm` e usa Supabase Auth.
+
+- `admin`: gerencia equipe, usuários e relatos.
+- `coordinator`: consulta, classifica, atribui, registra notas e responde relatos.
+- Contas novas e senhas redefinidas exigem troca no próximo acesso.
+- Relatos anônimos não podem receber respostas por e-mail.
+
+### Respostas por e-mail
+
+As respostas usam a função `respond-relato` e o Resend. Configure os secrets diretamente no Supabase:
+
+```bash
+supabase secrets set RESEND_API_KEY=...
+supabase secrets set "RESEND_FROM_EMAIL=Singular Não Dorme <relatos@singularnaodorme.com.br>"
 ```
 
-### Tabelas Necessárias
+O domínio do remetente precisa estar verificado no Resend.
 
-No Supabase, crie as seguintes tabelas:
+### Banco de dados
 
-#### `relatos`
-```sql
-CREATE TABLE relatos (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  tipo VARCHAR(50) NOT NULL, -- 'bullying', 'conflito', 'sugestao'
-  descricao TEXT NOT NULL,
-  local VARCHAR(255),
-  data_incidente DATE,
-  envolvidos TEXT,
-  testemunhas TEXT,
-  severidade VARCHAR(20), -- 'leve', 'moderado', 'grave', 'critico'
-  anônimo BOOLEAN DEFAULT true,
-  nome VARCHAR(255),
-  email VARCHAR(255),
-  telefone VARCHAR(20),
-  escola VARCHAR(255),
-  anexos JSONB,
-  status VARCHAR(50) DEFAULT 'pendente', -- 'pendente', 'investigando', 'resolvido', 'fechado'
-  resposta TEXT,
-  data_criacao TIMESTAMP DEFAULT NOW(),
-  data_atualizacao TIMESTAMP DEFAULT NOW(),
-  created_at TIMESTAMP DEFAULT NOW()
-);
-```
-
-#### `contatos`
-```sql
-CREATE TABLE contatos (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  nome VARCHAR(255) NOT NULL,
-  email VARCHAR(255) NOT NULL,
-  assunto VARCHAR(255),
-  mensagem TEXT NOT NULL,
-  data_envio TIMESTAMP DEFAULT NOW()
-);
-```
+O schema é versionado exclusivamente pelas migrations em `supabase/migrations/`. Elas criam as tabelas públicas e administrativas, índices, funções de autorização, políticas RLS e bloqueio de leitura pública dos relatos.
 
 ## 🔒 Segurança
 
@@ -149,12 +134,10 @@ CREATE TABLE contatos (
 - Validação de formulários no frontend
 - LGPD compliance
 
-⚠️ **A Implementar:**
-- Autenticação no backend
+⚠️ **Melhorias futuras:**
 - Rate limiting
 - CAPTCHA para formulários
-- Verificação de email
-- Encriptação end-to-end no Supabase
+- Políticas de retenção e exclusão de dados
 
 ## 📞 Contatos Importantes
 
@@ -178,12 +161,12 @@ CREATE TABLE contatos (
 - [x] Página de Recursos
 - [x] Página de FAQ
 - [x] Deploy automático (GitHub Pages)
-- [ ] Integração com Supabase
-- [ ] Dashboard Admin
-- [ ] Autenticação de usuários
+- [x] Integração com Supabase
+- [x] Dashboard Admin
+- [x] Autenticação de usuários
 - [ ] Chat de apoio
-- [ ] Notificações por email
-- [ ] Relatórios e estatísticas
+- [x] Respostas por e-mail
+- [x] Relatórios e estatísticas
 
 ## 📄 Licença
 

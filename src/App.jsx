@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { findReport, submitReport } from './supabase.js'
 import studentsSupportImage from './assets/students-support.jpg'
+import AdminApp from './Admin.jsx'
 
 const initialReport = {
   tipo: 'bullying',
@@ -332,6 +333,7 @@ function Footer() {
 
 export default function App() {
   const route = useHashRoute()
+  if (route.startsWith('/adm')) return <AdminApp />
   const page = route === '/relatar' ? <ReportPage /> : route === '/recursos' ? <Resources /> : route === '/faq' ? <Faq /> : <Home />
   return <><Nav />{page}<Footer /></>
 }
