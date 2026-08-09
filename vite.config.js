@@ -4,4 +4,9 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   base: '/Singularnaodorme/',
   plugins: [react()],
+  server: {
+    watch: {
+      usePolling: true,
+    },
+  },
 })
