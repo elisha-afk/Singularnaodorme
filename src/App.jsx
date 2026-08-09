@@ -333,7 +333,8 @@ function Footer() {
 
 export default function App() {
   const route = useHashRoute()
-  if (route.startsWith('/adm')) return <AdminApp />
+  const isAdminRecovery = new URLSearchParams(window.location.search).has('admin-recovery')
+  if (route.startsWith('/adm') || isAdminRecovery) return <AdminApp />
   const page = route === '/relatar' ? <ReportPage /> : route === '/recursos' ? <Resources /> : route === '/faq' ? <Faq /> : <Home />
   return <><Nav />{page}<Footer /></>
 }

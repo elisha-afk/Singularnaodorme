@@ -11,6 +11,20 @@ export const authClient = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   },
 })
 
+export async function requestPasswordReset(email) {
+  const response = await fetch(`${SUPABASE_URL}/functions/v1/request-admin-password-reset`, {
+    method: 'POST',
+    headers: {
+      apikey: SUPABASE_PUBLISHABLE_KEY,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ email }),
+  })
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok) throw new Error(data.error || 'Não foi possível enviar as instruções.')
+  return data
+}
+
 export async function adminRequest(functionName, path = '', options = {}) {
   const { data: { session } } = await authClient.auth.getSession()
   if (!session) throw new Error('Sua sessão expirou. Entre novamente.')

@@ -29,7 +29,11 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { adminApi, authClient } from "./adminApi.js";
+import {
+  adminApi,
+  authClient,
+  requestPasswordReset,
+} from "./adminApi.js";
 import "./admin.css";
 
 const typeLabels = {
@@ -71,14 +75,34 @@ export default function AdminApp() {
   const [authLoading, setAuthLoading] = useState(true);
   const [profile, setProfile] = useState(null);
   const [accessError, setAccessError] = useState("");
+  const [recoveryError, setRecoveryError] = useState("");
+  const [recoveryMode, setRecoveryMode] = useState(() =>
+    new URLSearchParams(window.location.search).has("admin-recovery"),
+  );
 
   useEffect(() => {
-    authClient.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setAuthLoading(false);
-    });
+    const params = new URLSearchParams(window.location.search);
+    const recoveryToken = params.get("token_hash");
+    const initializeAuth = recoveryToken
+      ? authClient.auth
+          .verifyOtp({ token_hash: recoveryToken, type: "recovery" })
+          .then(({ data, error }) => {
+            if (error) throw error;
+            window.history.replaceState({}, "", "/?admin-recovery=1#/adm");
+            setSession(data.session);
+          })
+      : authClient.auth.getSession().then(({ data }) => {
+          setSession(data.session);
+        });
+
+    initializeAuth
+      .catch(() => setRecoveryError("Este link expirou ou já foi utilizado."))
+      .finally(() => setAuthLoading(false));
     const { data: listener } = authClient.auth.onAuthStateChange(
-      (_event, nextSession) => setSession(nextSession),
+      (event, nextSession) => {
+        setSession(nextSession);
+        if (event === "PASSWORD_RECOVERY") setRecoveryMode(true);
+      },
     );
     return () => listener.subscription.unsubscribe();
   }, []);
@@ -98,6 +122,17 @@ export default function AdminApp() {
   }, [session]);
 
   if (authLoading) return <AdminLoading />;
+  if (recoveryMode && session)
+    return (
+      <RecoveryPassword
+        onChanged={() => {
+          window.history.replaceState({}, "", "/#/adm");
+          setRecoveryMode(false);
+        }}
+      />
+    );
+  if (recoveryMode && !session)
+    return <RecoveryLinkError message={recoveryError} />;
   if (!session) return <AdminLogin />;
   if (accessError) return <AccessDenied message={accessError} />;
   if (!profile) return <AdminLoading />;
@@ -116,8 +151,10 @@ export default function AdminApp() {
 function AdminLogin() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [forgotPassword, setForgotPassword] = useState(false);
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
 
   async function signIn(event) {
     event.preventDefault();
@@ -129,6 +166,21 @@ function AdminLogin() {
     });
     if (signInError) {
       setError("E-mail ou senha incorretos.");
+      setStatus("idle");
+    }
+  }
+
+  async function recover(event) {
+    event.preventDefault();
+    setStatus("loading");
+    setError("");
+    setMessage("");
+    try {
+      const result = await requestPasswordReset(email);
+      setMessage(result.message);
+      setStatus("sent");
+    } catch (recoveryError) {
+      setError(recoveryError.message);
       setStatus("idle");
     }
   }
@@ -155,12 +207,16 @@ function AdminLogin() {
         <small>O acesso é registrado e restrito à equipe autorizada.</small>
       </section>
       <section className="admin-auth-panel">
-        <form onSubmit={signIn}>
+        <form onSubmit={forgotPassword ? recover : signIn}>
           <div className="admin-auth-icon">
-            <LockKeyhole />
+            {forgotPassword ? <Mail /> : <LockKeyhole />}
           </div>
-          <h2>Acessar o painel</h2>
-          <p>Use as credenciais fornecidas pelo administrador.</p>
+          <h2>{forgotPassword ? "Recuperar acesso" : "Acessar o painel"}</h2>
+          <p>
+            {forgotPassword
+              ? "Informe seu e-mail institucional para receber um link seguro."
+              : "Use as credenciais fornecidas pelo administrador."}
+          </p>
           <label>
             E-mail institucional
             <input
@@ -171,41 +227,163 @@ function AdminLogin() {
               required
             />
           </label>
-          <label>
-            Senha
-            <input
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              autoComplete="current-password"
-              required
-            />
-          </label>
+          {!forgotPassword && (
+            <>
+              <label>
+                Senha
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  autoComplete="current-password"
+                  required
+                />
+              </label>
+              <button
+                type="button"
+                className="admin-forgot-button"
+                onClick={() => {
+                  setForgotPassword(true);
+                  setError("");
+                }}
+              >
+                Esqueceu a senha?
+              </button>
+            </>
+          )}
           {error && (
             <div className="admin-error">
               <AlertCircle />
               {error}
             </div>
           )}
+          {message && (
+            <div className="admin-success">
+              <CheckCircle2 />
+              {message}
+            </div>
+          )}
           <button
             className="admin-primary-button"
-            disabled={status === "loading"}
+            disabled={status === "loading" || status === "sent"}
           >
             {status === "loading" ? (
               <>
                 <Loader2 className="spin" />
-                Entrando...
+                {forgotPassword ? "Enviando..." : "Entrando..."}
               </>
             ) : (
-              <>Entrar com segurança</>
+              <>
+                {forgotPassword
+                  ? status === "sent"
+                    ? "E-mail solicitado"
+                    : "Enviar link de recuperação"
+                  : "Entrar com segurança"}
+              </>
             )}
           </button>
+          {forgotPassword && (
+            <button
+              type="button"
+              className="admin-back-link admin-link-button"
+              onClick={() => {
+                setForgotPassword(false);
+                setStatus("idle");
+                setError("");
+                setMessage("");
+              }}
+            >
+              <ArrowLeft />
+              Voltar ao login
+            </button>
+          )}
           <a className="admin-back-link" href="#/">
             <ArrowLeft />
             Voltar ao site
           </a>
         </form>
       </section>
+    </main>
+  );
+}
+
+function RecoveryPassword({ onChanged }) {
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function change(event) {
+    event.preventDefault();
+    if (password.length < 10 || password !== confirm) {
+      setError("Use ao menos 10 caracteres e confirme a mesma senha.");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    const { error: passwordError } = await authClient.auth.updateUser({
+      password,
+    });
+    if (passwordError) {
+      setError(passwordError.message);
+      setLoading(false);
+      return;
+    }
+    try {
+      await adminApi.completePasswordChange();
+      onChanged();
+    } catch (profileError) {
+      setError(profileError.message);
+      setLoading(false);
+    }
+  }
+
+  return (
+    <main className="admin-center-page">
+      <KeyRound />
+      <h1>Defina sua nova senha</h1>
+      <p>O link foi validado. Crie uma senha exclusiva para acessar o painel.</p>
+      <form className="password-form" onSubmit={change}>
+        <label>
+          Nova senha
+          <input
+            type="password"
+            minLength="10"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            autoComplete="new-password"
+            required
+          />
+        </label>
+        <label>
+          Confirmar senha
+          <input
+            type="password"
+            minLength="10"
+            value={confirm}
+            onChange={(event) => setConfirm(event.target.value)}
+            autoComplete="new-password"
+            required
+          />
+        </label>
+        {error && <div className="admin-error">{error}</div>}
+        <button className="admin-primary-button" disabled={loading}>
+          {loading ? "Salvando..." : "Salvar nova senha"}
+        </button>
+      </form>
+    </main>
+  );
+}
+
+function RecoveryLinkError({ message }) {
+  return (
+    <main className="admin-center-page">
+      <AlertCircle />
+      <h1>Link inválido ou expirado</h1>
+      <p>{message || "Solicite um novo link na tela de acesso do painel."}</p>
+      <a className="admin-primary-button" href="/#/adm">
+        Voltar ao login
+      </a>
     </main>
   );
 }

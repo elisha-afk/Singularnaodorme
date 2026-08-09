@@ -189,6 +189,24 @@
 .admin-back-link svg {
   width: 18px;
 }
+.admin-forgot-button,
+.admin-link-button {
+  border: 0;
+  color: #2457e6;
+  background: transparent;
+  font-weight: 900;
+}
+.admin-forgot-button {
+  width: max-content;
+  margin-top: -10px;
+  margin-left: auto;
+  padding: 2px 0;
+}
+.admin-forgot-button:hover,
+.admin-link-button:hover {
+  color: #173bb0;
+  text-decoration: underline;
+}
 .admin-error,
 .admin-success {
   display: flex;

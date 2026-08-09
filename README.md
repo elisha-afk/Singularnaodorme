@@ -108,6 +108,7 @@ O painel está disponível em `https://singularnaodorme.com.br/#/adm` e usa Supa
 - `admin`: gerencia equipe, usuários e relatos.
 - `coordinator`: consulta, classifica, atribui, registra notas e responde relatos.
 - Contas novas e senhas redefinidas exigem troca no próximo acesso.
+- O botão **Esqueceu a senha?** envia um link temporário pelo Resend e limita solicitações repetidas.
 - Relatos anônimos não podem receber respostas por e-mail.
 
 ### Respostas por e-mail
