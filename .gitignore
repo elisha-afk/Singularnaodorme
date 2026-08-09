@@ -1,22 +1,48 @@
 # Dependencies and generated output
 node_modules/
 dist/
+dist-ssr/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
+*.log
 
-# Local environment and Supabase CLI metadata
+# Environment and secrets — never commit real credentials
 .env
-.env.local
-.env.*.local
-.env.production
-*.secret
+.env.*
+!.env.example
+*.pem
 *.key
+*.p12
+*.pfx
+*.crt
+*.cer
+id_rsa*
+*_rsa
+*.secret
 secrets.json
+credentials.json
+service-account*.json
+
+# Supabase CLI local state
 supabase/.temp/
+supabase/.branches/
+
+# Local tooling config (not needed by other contributors, may reference internal infra)
+.mcp.json
+.claude/*
+
+# Test artifacts (Playwright)
+test-results/
+playwright-report/
+playwright/.cache/
 
 # Editor and operating system files
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
+*.bak
+*.orig
+*~

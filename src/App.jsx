@@ -288,7 +288,7 @@ function ReportPage() {
           <div className="form-progress" aria-label={`Etapa ${step} de 3`}>
             {[['1', 'Situação'], ['2', 'Detalhes'], ['3', 'Segurança']].map(([number, label], index) => <div className={step >= index + 1 ? 'progress-step active' : 'progress-step'} key={number}><span>{step > index + 1 ? <CheckCircle2 /> : number}</span><small>{label}</small></div>)}
           </div>
-          {Object.keys(errors).length > 0 && <div className="form-summary" role="alert"><AlertTriangle /><div><strong>Falta só um detalhe</strong><span>Confira o campo destacado para continuar.</span></div></div>}
+          {Object.values(errors).some(Boolean) && <div className="form-summary" role="alert"><AlertTriangle /><div><strong>Falta só um detalhe</strong><span>Confira o campo destacado para continuar.</span></div></div>}
 
           {step === 1 && <section className="form-step">
             <div className="step-heading"><span>01</span><div><h2>Como podemos ajudar?</h2><p>{report.tipo === 'sugestao' ? 'Compartilhe uma ideia para melhorar os espaços, regras ou atividades da escola.' : 'Escolha o tipo de relato e como você percebe a gravidade.'}</p></div></div>
