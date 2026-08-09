@@ -50,6 +50,7 @@ export const adminApi = {
   dashboard: () => adminRequest('admin-api', '?action=dashboard'),
   reports: (params) => adminRequest('admin-api', `?action=reports&${new URLSearchParams(params)}`),
   report: (id) => adminRequest('admin-api', `?action=report&id=${encodeURIComponent(id)}`),
+  deleteReport: (id) => adminRequest('admin-api', `?action=report&id=${encodeURIComponent(id)}`, { method: 'DELETE' }),
   updateReport: (changes) => adminRequest('admin-api', '?action=report', { method: 'PATCH', body: JSON.stringify(changes) }),
   completePasswordChange: () => adminRequest('admin-api', '?action=password-changed', { method: 'PATCH', body: '{}' }),
   addNote: (note) => adminRequest('admin-api', '?action=note', { method: 'POST', body: JSON.stringify(note) }),
@@ -58,5 +59,6 @@ export const adminApi = {
   updateUser: (user) => adminRequest('admin-users', '', { method: 'PATCH', body: JSON.stringify(user) }),
   createUnit: (unit) => adminRequest('admin-api', '?action=unit', { method: 'POST', body: JSON.stringify(unit) }),
   updateUnit: (unit) => adminRequest('admin-api', '?action=unit', { method: 'PATCH', body: JSON.stringify(unit) }),
+  deleteUnit: (id) => adminRequest('admin-api', `?action=unit&id=${encodeURIComponent(id)}`, { method: 'DELETE' }),
   respond: (response) => adminRequest('respond-relato', '', { method: 'POST', body: JSON.stringify(response) }),
 }

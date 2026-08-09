@@ -165,6 +165,35 @@ Deno.serve(async (req) => {
       return jsonResponse({ unit: data })
     }
 
+    if (req.method === 'DELETE' && action === 'unit') {
+      if (profile.role !== 'admin') return jsonResponse({ error: 'Ação exclusiva de administradores' }, 403)
+      const id = url.searchParams.get('id')
+      if (!id) return jsonResponse({ error: 'Unidade não informada' }, 400)
+
+      const { data: unit, error: unitError } = await supabase
+        .from('school_units')
+        .select('id,name')
+        .eq('id', id)
+        .maybeSingle()
+
+      if (unitError) throw unitError
+      if (!unit) return jsonResponse({ error: 'Unidade não encontrada' }, 404)
+
+      const { count, error: reportCountError } = await supabase
+        .from('relatos')
+        .select('id', { count: 'exact', head: true })
+        .ilike('escola', unit.name)
+
+      if (reportCountError) throw reportCountError
+      if ((count || 0) > 0) return jsonResponse({ error: 'Essa unidade já possui denúncias vinculadas. Desative em vez de excluir.' }, 409)
+
+      const { error: deleteError } = await supabase.from('school_units').delete().eq('id', id)
+      if (deleteError) throw deleteError
+
+      await audit(supabase, user.id, 'unit.deleted', 'school_unit', id, { name: unit.name })
+      return jsonResponse({ success: true })
+    }
+
     return jsonResponse({ error: 'Operação não encontrada' }, 404)
   } catch (error) {
     if (error instanceof Response) return error

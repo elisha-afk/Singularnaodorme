@@ -996,6 +996,14 @@
 .admin-unit-row small {
   color: #667085;
 }
+.admin-unit-actions {
+  display: inline-flex;
+  gap: 8px;
+}
+.admin-unit-actions .admin-danger-button,
+.admin-unit-actions .admin-secondary-button {
+  min-height: 38px;
+}
 .admin-user-row {
   display: grid;
   grid-template-columns: 42px minmax(170px, 1.4fr) 1fr 1fr auto auto;
@@ -1120,7 +1128,12 @@
   .admin-unit-row {
     grid-template-columns: 1fr auto;
   }
-  .admin-unit-row .admin-secondary-button {
+  .admin-unit-actions {
+    display: flex;
+    grid-column: 1 / -1;
+  }
+  .admin-unit-row .admin-secondary-button,
+  .admin-unit-row .admin-danger-button {
     grid-column: 1 / -1;
   }
   .admin-user-row > div:not(.admin-user-name):not(.admin-user-actions) {

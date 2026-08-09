@@ -1216,6 +1216,21 @@ function UnitsView() {
     }
   }
 
+  async function removeUnit(unit) {
+    const accepted = window.confirm(
+      `Tem certeza que deseja excluir a unidade "${unit.name}"?`,
+    );
+    if (!accepted) return;
+
+    try {
+      await adminApi.deleteUnit(unit.id);
+      setMessage({ type: "success", text: "Unidade excluída com sucesso." });
+      await load();
+    } catch (error) {
+      setMessage({ type: "error", text: error.message });
+    }
+  }
+
   return (
     <main className="admin-main">
       <div className="admin-page-heading">
@@ -1279,9 +1294,15 @@ function UnitsView() {
                 <span className={unit.active ? "user-active" : "user-inactive"}>
                   {unit.active ? "Ativa" : "Inativa"}
                 </span>
-                <button className="admin-secondary-button" onClick={() => toggle(unit)}>
-                  {unit.active ? "Desativar" : "Ativar"}
-                </button>
+                <div className="admin-unit-actions">
+                  <button className="admin-secondary-button" onClick={() => toggle(unit)}>
+                    {unit.active ? "Desativar" : "Ativar"}
+                  </button>
+                  <button className="admin-danger-button" onClick={() => removeUnit(unit)}>
+                    <Trash2 />
+                    Excluir
+                  </button>
+                </div>
               </article>
             ))
           )}
