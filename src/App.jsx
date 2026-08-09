@@ -4,7 +4,7 @@ import {
   HandHeart, Heart, Lock, Menu, MessageCircleWarning, Phone, Search, Send,
   ShieldCheck, Sparkles, UserRoundCheck, X,
 } from 'lucide-react'
-import { findReport, submitReport } from './supabase.js'
+import { fetchSchoolUnits, findReport, submitReport } from './supabase.js'
 import studentsSupportImage from './assets/students-support.jpg'
 import AdminApp from './Admin.jsx'
 
@@ -161,6 +161,26 @@ function ReportPage() {
   const [result, setResult] = useState(null)
   const [trackingCode, setTrackingCode] = useState('')
   const [tracking, setTracking] = useState({ state: 'idle', message: '', data: null })
+  const [units, setUnits] = useState([])
+  const [unitsLoading, setUnitsLoading] = useState(true)
+  const [unitsError, setUnitsError] = useState('')
+
+  useEffect(() => {
+    async function loadUnits() {
+      setUnitsLoading(true)
+      try {
+        const data = await fetchSchoolUnits()
+        setUnits(data.units || [])
+        setUnitsError('')
+      } catch (error) {
+        setUnits([])
+        setUnitsError(error.message)
+      } finally {
+        setUnitsLoading(false)
+      }
+    }
+    loadUnits()
+  }, [])
 
   function update(field, value) {
     setReport(current => ({ ...current, [field]: value }))
@@ -188,13 +208,13 @@ function ReportPage() {
       if (!report.local.trim()) next.local = 'Indique onde aconteceu.'
       if (!report.data_incidente) next.data_incidente = 'Indique quando aconteceu.'
       if (report.data_incidente > new Date().toISOString().slice(0, 10)) next.data_incidente = 'A data não pode estar no futuro.'
+      if (!report.escola.trim()) next.escola = 'Selecione a unidade escolar.'
     }
     if (fields === 'all' || fields === 3) {
       if (!report.anonimo) {
         if (report.nome.trim().length < 3) next.nome = 'Informe seu nome.'
         if (!/^\S+@\S+\.\S+$/.test(report.email)) next.email = 'Informe um e-mail válido.'
         if (report.telefone.replace(/\D/g, '').length < 10) next.telefone = 'Informe um telefone válido.'
-        if (!report.escola.trim()) next.escola = 'Informe sua escola.'
       }
       if (!agreed) next.terms = 'Confirme que as informações são verdadeiras para concluir.'
     }
@@ -221,7 +241,7 @@ function ReportPage() {
     event.preventDefault()
     if (!validate('all')) {
       if (!report.severidade) setStep(1)
-      else if (report.descricao.trim().length < 20 || !report.local || !report.data_incidente) setStep(2)
+      else if (report.descricao.trim().length < 20 || !report.local || !report.data_incidente || !report.escola.trim()) setStep(2)
       else setStep(3)
       return
     }
@@ -252,6 +272,13 @@ function ReportPage() {
     }
   }
 
+  const unitsByCategory = units.reduce((groups, unit) => {
+    const category = unit.category || 'Unidades'
+    if (!groups[category]) groups[category] = []
+    groups[category].push(unit)
+    return groups
+  }, {})
+
   return (
     <main className="report-page">
       <section className="report-hero"><div className="container"><h1><HandHeart />Faça sua denúncia</h1><p>Compartilhe com segurança, anonimato e confiança.</p></div></section>
@@ -273,6 +300,7 @@ function ReportPage() {
             <div className="step-heading"><span>02</span><div><h2>{report.tipo === 'sugestao' ? 'Conte a sua ideia' : 'Conte o que aconteceu'}</h2><p>{report.tipo === 'sugestao' ? 'Explique o que poderia mudar e como isso ajudaria os estudantes.' : 'Escreva do seu jeito. Você pode incluir apenas o que se sentir confortável.'}</p></div></div>
             <FormField field="descricao" label={report.tipo === 'sugestao' ? 'O que você gostaria de melhorar?' : 'O que aconteceu?'} error={errors.descricao}><textarea value={report.descricao} onChange={event => update('descricao', event.target.value)} placeholder={report.tipo === 'sugestao' ? 'Por exemplo: criar uma área de leitura no pátio, mudar uma regra ou propor uma nova atividade.' : 'Conte com suas palavras. Por exemplo: o que fizeram, quantas vezes aconteceu e como você se sentiu.'} /><span className="character-count">{report.descricao.length}/20 caracteres mínimos</span></FormField>
             {report.tipo === 'sugestao' ? <FormField field="local" label="Sobre o que é a sua ideia?" error={errors.local}><select value={report.local} onChange={event => update('local', event.target.value)}><option value="">Escolha uma categoria</option><option value="Espaço físico da escola">Espaço físico da escola</option><option value="Regra da escola">Regra da escola</option><option value="Convivência entre estudantes">Convivência entre estudantes</option><option value="Atividade ou projeto">Atividade ou projeto</option><option value="Outro assunto">Outro assunto</option></select></FormField> : <div className="form-grid"><FormField field="local" label="Onde aconteceu?" error={errors.local}><input value={report.local} onChange={event => update('local', event.target.value)} placeholder="Sala, pátio, corredor ou internet" /></FormField><FormField field="data_incidente" label="Quando aconteceu?" error={errors.data_incidente}><input type="date" max={new Date().toISOString().slice(0, 10)} value={report.data_incidente} onChange={event => update('data_incidente', event.target.value)} /></FormField></div>}
+            <FormField field="escola" label="Para qual unidade você quer enviar este relato?" error={errors.escola}><select value={report.escola} onChange={event => update('escola', event.target.value)} disabled={unitsLoading || units.length === 0}><option value="">{unitsLoading ? 'Carregando unidades...' : units.length === 0 ? 'Nenhuma unidade disponível' : 'Selecione uma unidade'}</option>{Object.entries(unitsByCategory).map(([category, categoryUnits]) => <optgroup key={category} label={category}>{categoryUnits.map(unit => <option key={unit.id} value={unit.name}>{unit.name}</option>)}</optgroup>)}</select>{unitsError && <small>{unitsError}</small>}</FormField>
             <FormField label={report.tipo === 'sugestao' ? 'Quem seria beneficiado? (opcional)' : 'Quem estava envolvido? (opcional)'}><textarea value={report.envolvidos} onChange={event => update('envolvidos', event.target.value)} placeholder={report.tipo === 'sugestao' ? 'Uma turma, todos os estudantes, professores ou a comunidade escolar.' : 'Não precisa informar nomes completos.'} /></FormField>
             <FormField label={report.tipo === 'sugestao' ? 'Quer acrescentar algum exemplo? (opcional)' : 'Alguém viu? (opcional)'}><textarea value={report.testemunhas} onChange={event => update('testemunhas', event.target.value)} placeholder={report.tipo === 'sugestao' ? 'Conte como essa ideia poderia funcionar na prática.' : 'Colegas, professores ou outras pessoas.'} /></FormField>
           </section>}
@@ -280,7 +308,7 @@ function ReportPage() {
           {step === 3 && <section className="form-step">
             <div className="step-heading"><span>03</span><div><h2>Você escolhe como enviar</h2><p>O modo anônimo vem ativado. Seus dados pessoais não são necessários.</p></div></div>
             <label className="anonymous-toggle"><input type="checkbox" checked={report.anonimo} onChange={event => update('anonimo', event.target.checked)} /><span><UserRoundCheck /><span><strong>Continuar em anonimato</strong><small>Nenhum dado pessoal será enviado.</small></span></span></label>
-            {!report.anonimo && <div className="identified-fields"><FormField field="nome" label="Nome" error={errors.nome}><input value={report.nome} onChange={event => update('nome', event.target.value)} /></FormField><FormField field="email" label="E-mail" error={errors.email}><input type="email" value={report.email} onChange={event => update('email', event.target.value)} /></FormField><FormField field="telefone" label="Telefone" error={errors.telefone}><input value={report.telefone} onChange={event => update('telefone', event.target.value)} /></FormField><FormField field="escola" label="Escola" error={errors.escola}><input value={report.escola} onChange={event => update('escola', event.target.value)} /></FormField></div>}
+            {!report.anonimo && <div className="identified-fields"><FormField field="nome" label="Nome" error={errors.nome}><input value={report.nome} onChange={event => update('nome', event.target.value)} /></FormField><FormField field="email" label="E-mail" error={errors.email}><input type="email" value={report.email} onChange={event => update('email', event.target.value)} /></FormField><FormField field="telefone" label="Telefone" error={errors.telefone}><input value={report.telefone} onChange={event => update('telefone', event.target.value)} /></FormField></div>}
             <div className="report-review"><Sparkles /><div><strong>{report.tipo === 'sugestao' ? 'Sua ideia está pronta' : 'Seu relato está pronto'}</strong><span>{reportTypeLabels[report.tipo]} · {report.severidade} · {report.anonimo ? 'anônimo' : 'identificado'}</span></div></div>
             <label className="terms" data-field="terms"><input type="checkbox" checked={agreed} onChange={event => { setAgreed(event.target.checked); setErrors(current => ({ ...current, terms: '' })) }} />Confirmo que as informações são verdadeiras e concordo com os Termos de Uso e a Política de Privacidade.</label>
             {errors.terms && <p className="field-error">{errors.terms}</p>}

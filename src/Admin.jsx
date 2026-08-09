@@ -3,6 +3,7 @@ import {
   AlertCircle,
   ArrowLeft,
   BarChart3,
+  Building2,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
@@ -502,6 +503,18 @@ function AdminDashboard({ profile }) {
           </button>
           {profile.role === "admin" && (
             <button
+              className={view === "units" ? "active" : ""}
+              onClick={() => {
+                setView("units");
+                setSidebarOpen(false);
+              }}
+            >
+              <Building2 />
+              Unidades
+            </button>
+          )}
+          {profile.role === "admin" && (
+            <button
               className={view === "users" ? "active" : ""}
               onClick={() => {
                 setView("users");
@@ -544,9 +557,9 @@ function AdminDashboard({ profile }) {
             Ver site
           </a>
         </header>
-        {view === "reports" ? (
-          <ReportsView />
-        ) : (
+        {view === "reports" && <ReportsView />}
+        {view === "units" && profile.role === "admin" && <UnitsView />}
+        {view === "users" && profile.role === "admin" && (
           <UsersView currentUser={profile} />
         )}
       </div>
@@ -1114,10 +1127,139 @@ function ReportDetails({ report }) {
         <>
           <Detail label="E-mail" value={report.email} />
           <Detail label="Telefone" value={report.telefone} />
-          <Detail label="Escola" value={report.escola} />
         </>
       )}
+      <Detail label="Unidade" value={report.escola} />
     </div>
+  );
+}
+
+function UnitsView() {
+  const [units, setUnits] = useState([]);
+  const [form, setForm] = useState({ name: "", category: "" });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState({ type: "", text: "" });
+
+  async function load() {
+    setLoading(true);
+    try {
+      const data = await adminApi.units();
+      setUnits(data.units);
+      setMessage({ type: "", text: "" });
+    } catch (error) {
+      setMessage({ type: "error", text: error.message });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function create(event) {
+    event.preventDefault();
+    setSaving(true);
+    try {
+      await adminApi.createUnit(form);
+      setForm({ name: "", category: "" });
+      setMessage({ type: "success", text: "Unidade cadastrada com sucesso." });
+      await load();
+    } catch (error) {
+      setMessage({ type: "error", text: error.message });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function toggle(unit) {
+    try {
+      await adminApi.updateUnit({ id: unit.id, active: !unit.active });
+      await load();
+    } catch (error) {
+      setMessage({ type: "error", text: error.message });
+    }
+  }
+
+  return (
+    <main className="admin-main">
+      <div className="admin-page-heading">
+        <div>
+          <span className="admin-kicker">Organização escolar</span>
+          <h1>Unidades para denúncias</h1>
+          <p>Cadastre as escolas para aparecerem no formulário público.</p>
+        </div>
+      </div>
+
+      <section className="admin-list-panel">
+        <form className="admin-unit-form" onSubmit={create}>
+          <label>
+            Nome da unidade
+            <input
+              value={form.name}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, name: event.target.value }))
+              }
+              placeholder="Ex.: Escola Municipal Aurora"
+              required
+            />
+          </label>
+          <label>
+            Categoria
+            <input
+              value={form.category}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, category: event.target.value }))
+              }
+              placeholder="Ex.: Fundamental I"
+              required
+            />
+          </label>
+          <button className="admin-primary-button" disabled={saving}>
+            <Plus />
+            {saving ? "Salvando..." : "Adicionar unidade"}
+          </button>
+        </form>
+
+        {message.text && (
+          <div className={message.type === "success" ? "admin-success" : "admin-error"}>
+            {message.type === "success" ? <CheckCircle2 /> : <AlertCircle />}
+            {message.text}
+          </div>
+        )}
+
+        <div className="admin-units-list">
+          {loading ? (
+            <div className="admin-table-loading">
+              <Loader2 className="spin" />
+              Carregando unidades...
+            </div>
+          ) : (
+            units.map((unit) => (
+              <article className="admin-unit-row" key={unit.id}>
+                <div>
+                  <strong>{unit.name}</strong>
+                  <small>{unit.category}</small>
+                </div>
+                <span className={unit.active ? "user-active" : "user-inactive"}>
+                  {unit.active ? "Ativa" : "Inativa"}
+                </span>
+                <button className="admin-secondary-button" onClick={() => toggle(unit)}>
+                  {unit.active ? "Desativar" : "Ativar"}
+                </button>
+              </article>
+            ))
+          )}
+          {!loading && units.length === 0 && (
+            <div className="admin-empty">
+              <Building2 />
+              <strong>Nenhuma unidade cadastrada</strong>
+            </div>
+          )}
+        </div>
+      </section>
+    </main>
   );
 }
 

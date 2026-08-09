@@ -41,3 +41,7 @@ export function submitReport(report) {
 export function findReport(code) {
   return request(`get-relato?code=${encodeURIComponent(code)}`, { method: 'GET' })
 }
+
+export function fetchSchoolUnits() {
+  return request('school-units', { method: 'GET' })
+}

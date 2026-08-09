@@ -46,6 +46,7 @@ export async function adminRequest(functionName, path = '', options = {}) {
 export const adminApi = {
   me: () => adminRequest('admin-api', '?action=me'),
   staff: () => adminRequest('admin-api', '?action=staff'),
+  units: () => adminRequest('admin-api', '?action=units'),
   dashboard: () => adminRequest('admin-api', '?action=dashboard'),
   reports: (params) => adminRequest('admin-api', `?action=reports&${new URLSearchParams(params)}`),
   report: (id) => adminRequest('admin-api', `?action=report&id=${encodeURIComponent(id)}`),
@@ -55,5 +56,7 @@ export const adminApi = {
   users: () => adminRequest('admin-users'),
   createUser: (user) => adminRequest('admin-users', '', { method: 'POST', body: JSON.stringify(user) }),
   updateUser: (user) => adminRequest('admin-users', '', { method: 'PATCH', body: JSON.stringify(user) }),
+  createUnit: (unit) => adminRequest('admin-api', '?action=unit', { method: 'POST', body: JSON.stringify(unit) }),
+  updateUnit: (unit) => adminRequest('admin-api', '?action=unit', { method: 'PATCH', body: JSON.stringify(unit) }),
   respond: (response) => adminRequest('respond-relato', '', { method: 'POST', body: JSON.stringify(response) }),
 }

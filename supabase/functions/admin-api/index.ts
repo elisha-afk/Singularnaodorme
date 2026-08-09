@@ -18,6 +18,17 @@ Deno.serve(async (req) => {
       return jsonResponse({ staff: data || [] })
     }
 
+    if (req.method === 'GET' && action === 'units') {
+      const { data, error } = await supabase
+        .from('school_units')
+        .select('id,name,category,active,created_at,updated_at')
+        .order('active', { ascending: false })
+        .order('category')
+        .order('name')
+      if (error) throw error
+      return jsonResponse({ units: data || [] })
+    }
+
     if (req.method === 'PATCH' && action === 'password-changed') {
       const { error } = await supabase.from('admin_profiles').update({ must_change_password: false, updated_at: new Date().toISOString() }).eq('id', user.id)
       if (error) throw error
@@ -93,6 +104,44 @@ Deno.serve(async (req) => {
       if (error) throw error
       await audit(supabase, user.id, 'note.created', 'relato', body.relato_id)
       return jsonResponse({ note: { ...data, admin_profiles: { name: profile.name } } }, 201)
+    }
+
+    if (req.method === 'POST' && action === 'unit') {
+      if (profile.role !== 'admin') return jsonResponse({ error: 'Ação exclusiva de administradores' }, 403)
+      const body = await req.json()
+      const name = String(body.name || '').trim()
+      const category = String(body.category || '').trim()
+      if (name.length < 2 || category.length < 2) return jsonResponse({ error: 'Informe nome e categoria da unidade' }, 400)
+
+      const { data, error } = await supabase
+        .from('school_units')
+        .insert({ name, category, created_by: user.id })
+        .select('id,name,category,active,created_at,updated_at')
+        .single()
+      if (error) {
+        if (String(error.message).toLowerCase().includes('duplicate')) return jsonResponse({ error: 'Já existe uma unidade com esse nome' }, 409)
+        throw error
+      }
+      await audit(supabase, user.id, 'unit.created', 'school_unit', data.id)
+      return jsonResponse({ unit: data }, 201)
+    }
+
+    if (req.method === 'PATCH' && action === 'unit') {
+      if (profile.role !== 'admin') return jsonResponse({ error: 'Ação exclusiva de administradores' }, 403)
+      const body = await req.json()
+      if (!body.id) return jsonResponse({ error: 'Unidade não informada' }, 400)
+      if (typeof body.active !== 'boolean') return jsonResponse({ error: 'Status inválido para unidade' }, 400)
+
+      const changes = { active: body.active, updated_at: new Date().toISOString() }
+      const { data, error } = await supabase
+        .from('school_units')
+        .update(changes)
+        .eq('id', body.id)
+        .select('id,name,category,active,created_at,updated_at')
+        .single()
+      if (error) throw error
+      await audit(supabase, user.id, 'unit.updated', 'school_unit', body.id, changes)
+      return jsonResponse({ unit: data })
     }
 
     return jsonResponse({ error: 'Operação não encontrada' }, 404)

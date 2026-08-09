@@ -61,6 +61,20 @@ Deno.serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseKey)
 
+    const { data: unit, error: unitError } = await supabase
+      .from('school_units')
+      .select('id')
+      .eq('active', true)
+      .ilike('name', sanitizedData.escola)
+      .maybeSingle()
+
+    if (unitError || !unit) {
+      return new Response(
+        JSON.stringify({ error: 'A unidade selecionada não está disponível.' }),
+        { status: 400, headers: corsHeaders }
+      )
+    }
+
     // Gerar código de rastreamento
     const trackingCode = generateTrackingCode()
 
@@ -138,6 +152,10 @@ function validateRelato(data: RelatoData) {
     errors.push('Severidade inválida')
   }
 
+  if (!data.escola || data.escola.trim().length < 2) {
+    errors.push('Unidade escolar é obrigatória')
+  }
+
   if (!data.anonimo) {
     if (!data.nome || data.nome.length < 3) {
       errors.push('Nome deve ter mínimo 3 caracteres')
@@ -170,7 +188,7 @@ function sanitizeRelato(data: RelatoData) {
     nome: data.anonimo ? null : data.nome?.trim().substring(0, 255),
     email: data.anonimo ? null : data.email?.trim().toLowerCase(),
     telefone: data.anonimo ? null : data.telefone?.replace(/\D/g, ''),
-    escola: data.anonimo ? null : data.escola?.trim().substring(0, 255),
+    escola: data.escola?.trim().substring(0, 255),
   }
 }
 
