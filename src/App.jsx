@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import {
   AlertTriangle, ArrowLeft, ArrowRight, BookOpen, CheckCircle2, ExternalLink,
   HandHeart, Heart, Lock, Menu, MessageCircleWarning, Phone, Search, Send,
-  ShieldCheck, Sparkles, UserRoundCheck, X,
+  ShieldCheck, Sparkles, Sun, Moon, UserRoundCheck, X,
 } from 'lucide-react'
 import { fetchSchoolUnits, findReport, submitReport } from './supabase.js'
 import studentsSupportImage from './assets/students-support.jpg'
@@ -51,7 +51,7 @@ function useHashRoute() {
   return route
 }
 
-function Nav() {
+function Nav({ theme, onToggleTheme }) {
   const [open, setOpen] = useState(false)
   const closeMenu = () => setOpen(false)
 
@@ -64,6 +64,16 @@ function Nav() {
         </a>
         <button className="menu-toggle" type="button" onClick={() => setOpen(value => !value)} aria-expanded={open} aria-label="Abrir menu">
           {open ? <X /> : <Menu />}
+        </button>
+        <button
+          className="theme-toggle"
+          type="button"
+          onClick={onToggleTheme}
+          aria-label={theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'}
+          title={theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'}
+        >
+          {theme === 'dark' ? <Sun /> : <Moon />}
+          <span>{theme === 'dark' ? 'Claro' : 'Escuro'}</span>
         </button>
         <nav className={open ? 'nav-links is-open' : 'nav-links'}>
           <a href="#/" onClick={closeMenu}>Home</a>
@@ -245,11 +255,12 @@ function ReportPage() {
       else setStep(3)
       return
     }
+    const wasAnonymous = report.anonimo
     setStatus('sending')
     setResult(null)
     try {
       const data = await submitReport(report)
-      setResult({ ...data, submittedType: report.tipo })
+      setResult({ ...data, submittedType: report.tipo, wasAnonymous })
       setReport(initialReport)
       setAgreed(false)
       setStep(1)
@@ -321,7 +332,7 @@ function ReportPage() {
           </div>
           {status === 'error' && <p className="notice error">{result.error}</p>}
         </form>
-        {status === 'success' && <section className="notice success"><CheckCircle2 /><div><h2>{result.submittedType === 'sugestao' ? 'Ideia enviada' : 'Denúncia enviada'}</h2><p>Guarde o seu código de rastreamento:</p><strong>{result.trackingCode}</strong><button type="button" className="text-button" onClick={() => setStatus('idle')}>{result.submittedType === 'sugestao' ? 'Enviar outra ideia' : 'Enviar outro relato'}</button></div></section>}
+        {status === 'success' && <section className="notice success"><CheckCircle2 /><div><h2>{result.submittedType === 'sugestao' ? 'Ideia enviada' : 'Denúncia enviada'}</h2><p>Guarde o seu código de rastreamento:</p><strong>{result.trackingCode}</strong>{result.wasAnonymous && <div className="anonymous-code-warning" role="alert"><AlertTriangle /><p><strong>Atenção:</strong> se você perder este código, não será possível acessar novamente este relato. Será necessário enviar um novo relato sobre o mesmo assunto.</p></div>}<button type="button" className="text-button" onClick={() => setStatus('idle')}>{result.submittedType === 'sugestao' ? 'Enviar outra ideia' : 'Enviar outro relato'}</button></div></section>}
         <section className="tracking-card"><h2><Search />Rastrear sua denúncia</h2><p>Digite o código recebido ao enviar seu relato.</p><form onSubmit={search}><input value={trackingCode} onChange={event => setTrackingCode(event.target.value)} placeholder="Código de rastreamento" /><button className="button button-primary">Buscar</button></form>{tracking.state === 'loading' && <p>Buscando...</p>}{tracking.state === 'error' && <p className="notice error">{tracking.message}</p>}{tracking.state === 'success' && <div className="notice"><p><strong>Status:</strong> {statusLabels[tracking.data.status] || tracking.data.status}</p><p><strong>Tipo:</strong> {tracking.data.tipo}</p><p><strong>Data:</strong> {new Date(tracking.data.data_criacao).toLocaleDateString('pt-BR')}</p></div>}</section>
       </div>
     </main>
@@ -361,8 +372,26 @@ function Footer() {
 
 export default function App() {
   const route = useHashRoute()
+  const [theme, setTheme] = useState(() => {
+    const saved = localStorage.getItem('siteTheme')
+    return saved === 'dark' ? 'dark' : 'light'
+  })
+
+  useEffect(() => {
+    localStorage.setItem('siteTheme', theme)
+  }, [theme])
+
   const isAdminRecovery = new URLSearchParams(window.location.search).has('admin-recovery')
   if (route.startsWith('/adm') || isAdminRecovery) return <AdminApp />
   const page = route === '/relatar' ? <ReportPage /> : route === '/recursos' ? <Resources /> : route === '/faq' ? <Faq /> : <Home />
-  return <><Nav />{page}<Footer /></>
+  return (
+    <div className={theme === 'dark' ? 'site-theme-dark' : 'site-theme-light'}>
+      <Nav
+        theme={theme}
+        onToggleTheme={() => setTheme(current => (current === 'dark' ? 'light' : 'dark'))}
+      />
+      {page}
+      <Footer />
+    </div>
+  )
 }

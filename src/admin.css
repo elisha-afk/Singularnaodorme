@@ -374,22 +374,49 @@
 }
 .admin-topbar > div {
   display: grid;
+  min-width: 0;
 }
 .admin-topbar span {
+  overflow: hidden;
   color: #667085;
   font-size: 0.78rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .admin-topbar strong {
+  overflow: hidden;
   font-size: 0.94rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .admin-topbar > a {
   display: flex;
   gap: 7px;
   align-items: center;
-  margin-left: auto;
+  flex: 0 0 auto;
   color: #344054;
   font-weight: 800;
   text-decoration: none;
+}
+.admin-theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 36px;
+  margin-left: auto;
+  padding: 7px 11px;
+  border: 1px solid #d7deeb;
+  border-radius: 7px;
+  flex: 0 0 auto;
+  color: #344054;
+  background: #f8fafc;
+  font-weight: 800;
+}
+.admin-theme-toggle svg {
+  width: 17px;
+}
+.admin-theme-toggle:hover {
+  background: #eef2f7;
 }
 .admin-topbar > a svg {
   width: 18px;
@@ -398,6 +425,116 @@
   display: none;
   border: 0;
   background: none;
+}
+
+.admin-shell.theme-dark {
+  color: #e2e8f0;
+  background: #0f172a;
+}
+.admin-shell.theme-dark .admin-workspace,
+.admin-shell.theme-dark .admin-main,
+.admin-shell.theme-dark .admin-drawer {
+  background: #0f172a;
+}
+.admin-shell.theme-dark .admin-topbar {
+  border-bottom-color: #1e293b;
+  background: #111827;
+}
+.admin-shell.theme-dark .admin-topbar span,
+.admin-shell.theme-dark .admin-page-heading p,
+.admin-shell.theme-dark .admin-detail span,
+.admin-shell.theme-dark .admin-timeline small,
+.admin-shell.theme-dark .admin-table-wrap th,
+.admin-shell.theme-dark .admin-table-wrap td:first-child span,
+.admin-shell.theme-dark .admin-empty,
+.admin-shell.theme-dark .admin-table-loading,
+.admin-shell.theme-dark .admin-pagination {
+  color: #94a3b8;
+}
+.admin-shell.theme-dark .admin-topbar strong,
+.admin-shell.theme-dark .admin-page-heading h1,
+.admin-shell.theme-dark .admin-table-wrap td,
+.admin-shell.theme-dark .admin-table-wrap td:first-child strong,
+.admin-shell.theme-dark .admin-detail p,
+.admin-shell.theme-dark .admin-empty strong,
+.admin-shell.theme-dark .admin-response-history p,
+.admin-shell.theme-dark .admin-response-history h3 {
+  color: #e2e8f0;
+}
+.admin-shell.theme-dark .admin-topbar > a,
+.admin-shell.theme-dark .admin-theme-toggle {
+  color: #e2e8f0;
+}
+.admin-shell.theme-dark .admin-theme-toggle {
+  border-color: #334155;
+  background: #1f2937;
+}
+.admin-shell.theme-dark .admin-theme-toggle:hover {
+  background: #334155;
+}
+.admin-shell.theme-dark .admin-list-panel,
+.admin-shell.theme-dark .admin-users-panel,
+.admin-shell.theme-dark .admin-stat,
+.admin-shell.theme-dark .admin-detail,
+.admin-shell.theme-dark .admin-note-form,
+.admin-shell.theme-dark .admin-response-form,
+.admin-shell.theme-dark .admin-timeline article div,
+.admin-shell.theme-dark .admin-modal,
+.admin-shell.theme-dark .admin-drawer-controls,
+.admin-shell.theme-dark .admin-drawer-danger,
+.admin-shell.theme-dark .admin-drawer-tabs,
+.admin-shell.theme-dark .admin-unit-form,
+.admin-shell.theme-dark .admin-unit-row,
+.admin-shell.theme-dark .admin-filters {
+  border-color: #1f2937;
+  background: #111827;
+}
+.admin-shell.theme-dark .admin-stat small,
+.admin-shell.theme-dark .admin-user-row small,
+.admin-shell.theme-dark .admin-unit-row small,
+.admin-shell.theme-dark .admin-user-row > div > span,
+.admin-shell.theme-dark .admin-drawer-controls label {
+  color: #94a3b8;
+}
+.admin-shell.theme-dark .admin-filter-row select,
+.admin-shell.theme-dark .admin-drawer-controls select,
+.admin-shell.theme-dark .admin-filters form,
+.admin-shell.theme-dark .admin-filters form input,
+.admin-shell.theme-dark .admin-pagination button,
+.admin-shell.theme-dark .admin-unit-form input,
+.admin-shell.theme-dark .admin-auth-panel input,
+.admin-shell.theme-dark .password-form input,
+.admin-shell.theme-dark .admin-modal input,
+.admin-shell.theme-dark .admin-modal select,
+.admin-shell.theme-dark .admin-response-form input,
+.admin-shell.theme-dark .admin-response-form textarea,
+.admin-shell.theme-dark .admin-note-form textarea {
+  border-color: #334155;
+  color: #e2e8f0;
+  background: #0f172a;
+}
+.admin-shell.theme-dark .admin-filters form svg,
+.admin-shell.theme-dark .admin-filter-row > svg {
+  color: #94a3b8;
+}
+.admin-shell.theme-dark .admin-table-wrap tbody tr:hover {
+  background: #1e293b;
+}
+.admin-shell.theme-dark .admin-table-wrap th,
+.admin-shell.theme-dark .admin-table-wrap td,
+.admin-shell.theme-dark .admin-table-wrap td,
+.admin-shell.theme-dark .admin-pagination,
+.admin-shell.theme-dark .admin-users-panel,
+.admin-shell.theme-dark .admin-unit-row,
+.admin-shell.theme-dark .admin-filters,
+.admin-shell.theme-dark .admin-drawer-controls,
+.admin-shell.theme-dark .admin-drawer-danger,
+.admin-shell.theme-dark .admin-drawer-tabs,
+.admin-shell.theme-dark .admin-response-history article {
+  border-color: #1f2937;
+}
+.admin-shell.theme-dark .admin-table-wrap th {
+  background: #0b1220;
 }
 .admin-main {
   width: min(1500px, 100%);
@@ -1214,6 +1351,12 @@
     font-size: 1rem;
   }
   .admin-topbar > a {
+    font-size: 0;
+  }
+  .admin-theme-toggle {
+    min-width: 36px;
+    justify-content: center;
+    padding: 7px;
     font-size: 0;
   }
   .admin-page-heading {

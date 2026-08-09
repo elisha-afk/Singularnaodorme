@@ -20,12 +20,14 @@ import {
   Mail,
   Menu,
   MessageSquareText,
+  Moon,
   Plus,
   RefreshCw,
   Search,
   Send,
   ShieldCheck,
   SlidersHorizontal,
+  Sun,
   Trash2,
   UserCog,
   Users,
@@ -475,9 +477,17 @@ function AdminLoading() {
 function AdminDashboard({ profile }) {
   const [view, setView] = useState("reports");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [theme, setTheme] = useState(() => {
+    const saved = localStorage.getItem("adminTheme");
+    return saved === "dark" ? "dark" : "light";
+  });
+
+  useEffect(() => {
+    localStorage.setItem("adminTheme", theme);
+  }, [theme]);
 
   return (
-    <div className="admin-shell">
+    <div className={`admin-shell ${theme === "dark" ? "theme-dark" : "theme-light"}`}>
       <aside className={sidebarOpen ? "admin-sidebar open" : "admin-sidebar"}>
         <div className="admin-sidebar-head">
           <a href="#/">
@@ -553,6 +563,16 @@ function AdminDashboard({ profile }) {
             <span>Painel da coordenação</span>
             <strong>{profile.school || "Todas as unidades"}</strong>
           </div>
+          <button
+            type="button"
+            className="admin-theme-toggle"
+            onClick={() => setTheme((current) => (current === "dark" ? "light" : "dark"))}
+            aria-label={theme === "dark" ? "Ativar modo claro" : "Ativar modo escuro"}
+            title={theme === "dark" ? "Ativar modo claro" : "Ativar modo escuro"}
+          >
+            {theme === "dark" ? <Sun /> : <Moon />}
+            {theme === "dark" ? "Modo claro" : "Modo escuro"}
+          </button>
           <a href="#/" target="_blank">
             <Eye />
             Ver site
