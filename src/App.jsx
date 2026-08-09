@@ -59,7 +59,7 @@ function Nav({ theme, onToggleTheme }) {
     <header className="site-header">
       <div className="nav-shell">
         <a className="brand" href="#/" onClick={closeMenu}>
-          <ShieldCheck aria-hidden="true" />
+          <img src="/singular-nao-dorme-logo.png" alt="" aria-hidden="true" />
           <span>SingularNãoDorme</span>
         </a>
         <button className="menu-toggle" type="button" onClick={() => setOpen(value => !value)} aria-expanded={open} aria-label="Abrir menu">

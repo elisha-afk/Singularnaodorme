@@ -193,7 +193,7 @@ function AdminLogin() {
     <main className="admin-auth-page">
       <section className="admin-auth-brand">
         <a href="#/">
-          <ShieldCheck />
+          <img src="/singular-nao-dorme-logo.png" alt="" aria-hidden="true" />
           <span>SingularNãoDorme</span>
         </a>
         <div>
@@ -491,7 +491,7 @@ function AdminDashboard({ profile }) {
       <aside className={sidebarOpen ? "admin-sidebar open" : "admin-sidebar"}>
         <div className="admin-sidebar-head">
           <a href="#/">
-            <ShieldCheck />
+            <img src="/singular-nao-dorme-logo.png" alt="" aria-hidden="true" />
             <span>SingularNãoDorme</span>
           </a>
           <button

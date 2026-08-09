@@ -46,9 +46,11 @@
   font-weight: 650;
   text-decoration: none;
 }
-.admin-auth-brand > a svg {
+.admin-auth-brand > a svg,
+.admin-auth-brand > a img {
   width: 30px;
   height: 30px;
+  object-fit: contain;
 }
 .admin-auth-brand h1 {
   max-width: 650px;
@@ -287,8 +289,11 @@
   font-weight: 650;
   text-decoration: none;
 }
-.admin-sidebar-head a svg {
+.admin-sidebar-head a svg,
+.admin-sidebar-head a img {
   width: 25px;
+  height: 25px;
+  object-fit: contain;
 }
 .admin-sidebar-head > button {
   display: none;
