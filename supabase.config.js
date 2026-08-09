@@ -37,7 +37,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 // ================================================
 
 /**
- * Enviar relato para o banco de dados
+ * Enviar relato para o banco de dados (via Edge Function)
  */
 async function submitReportToSupabase(formData) {
     try {
@@ -49,27 +49,35 @@ async function submitReportToSupabase(formData) {
             envolvidos: formData.involved,
             testemunhas: formData.witnesses,
             severidade: formData.severity,
-            anônimo: formData.isAnonymous,
+            anonimo: formData.isAnonymous,
             nome: formData.isAnonymous ? null : formData.name,
             email: formData.isAnonymous ? null : formData.email,
             telefone: formData.isAnonymous ? null : formData.phone,
             escola: formData.isAnonymous ? null : formData.school,
-            status: 'pendente',
-            data_criacao: new Date().toISOString()
         }
 
-        const { data, error } = await supabase
-            .from('relatos')
-            .insert([report])
-            .select()
+        // Chamar Edge Function
+        const response = await fetch(
+            `${SUPABASE_URL}/functions/v1/submit-relato`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                },
+                body: JSON.stringify(report)
+            }
+        )
 
-        if (error) {
+        if (!response.ok) {
+            const error = await response.json()
             console.error('Erro ao enviar relato:', error)
-            throw error
+            throw new Error(error.error || 'Erro ao enviar denúncia')
         }
 
+        const data = await response.json()
         console.log('Relato enviado com sucesso:', data)
-        return data[0]
+        return data
     } catch (error) {
         console.error('Erro:', error.message)
         throw error
@@ -77,21 +85,26 @@ async function submitReportToSupabase(formData) {
 }
 
 /**
- * Buscar relato por código de rastreamento
+ * Buscar relato por código de rastreamento (via Edge Function)
  */
 async function fetchReportByCode(code) {
     try {
-        const { data, error } = await supabase
-            .from('relatos')
-            .select('*')
-            .eq('id', code)
-            .single()
+        const response = await fetch(
+            `${SUPABASE_URL}/functions/v1/get-relato?code=${encodeURIComponent(code)}`,
+            {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                }
+            }
+        )
 
-        if (error) {
-            console.error('Relato não encontrado:', error)
+        if (!response.ok) {
+            console.error('Relato não encontrado')
             return null
         }
 
+        const data = await response.json()
         return data
     } catch (error) {
         console.error('Erro ao buscar relato:', error.message)
@@ -100,7 +113,7 @@ async function fetchReportByCode(code) {
 }
 
 /**
- * Enviar mensagem de contato
+ * Enviar mensagem de contato (via Edge Function)
  */
 async function submitContactForm(formData) {
     try {
@@ -109,21 +122,29 @@ async function submitContactForm(formData) {
             email: formData.email,
             assunto: formData.subject,
             mensagem: formData.message,
-            data_envio: new Date().toISOString()
         }
 
-        const { data, error } = await supabase
-            .from('contatos')
-            .insert([contact])
-            .select()
+        const response = await fetch(
+            `${SUPABASE_URL}/functions/v1/submit-contato`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                },
+                body: JSON.stringify(contact)
+            }
+        )
 
-        if (error) {
+        if (!response.ok) {
+            const error = await response.json()
             console.error('Erro ao enviar contato:', error)
-            throw error
+            throw new Error(error.error || 'Erro ao enviar mensagem')
         }
 
+        const data = await response.json()
         console.log('Contato enviado com sucesso:', data)
-        return data[0]
+        return data
     } catch (error) {
         console.error('Erro:', error.message)
         throw error
