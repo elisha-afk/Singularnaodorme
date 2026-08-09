@@ -11,18 +11,9 @@
 // IMPORTANTE: Nunca faça commit da chave privada!
 // Usar apenas a chave pública (anon key) é seguro
 //
-// ⚠️ PARA PRODUÇÃO (GitHub Pages):
-// 1. Crie variáveis de ambiente no GitHub Secrets
-// 2. Adicione um workflow que injeta as variáveis no build
-
-// Tentar ler de variáveis de ambiente primeiro
-const SUPABASE_URL = import.meta?.env?.VITE_SUPABASE_URL || 
-                     (typeof process !== 'undefined' && process.env?.SUPABASE_URL) ||
-                     'https://xcpfjuvvgzyrnqmhzibu.supabase.co'
-
-const SUPABASE_ANON_KEY = import.meta?.env?.VITE_SUPABASE_ANON_KEY || 
-                          (typeof process !== 'undefined' && process.env?.SUPABASE_ANON_KEY) ||
-                          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhjcGZqdXZ2Z3p5cm5xbWh6aWJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYyODk1NTksImV4cCI6MjEwMTg2NTU1OX0.xwFl23__rHZtacBYOyDuZ8p1igemIHILu68oRJtVgBs'
+// GitHub Pages executa este arquivo como script clássico, sem variáveis de build.
+const SUPABASE_URL = 'https://xcpfjuvvgzyrnqmhzibu.supabase.co'
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhjcGZqdXZ2Z3p5cm5xbWh6aWJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYyODk1NTksImV4cCI6MjEwMTg2NTU1OX0.xwFl23__rHZtacBYOyDuZ8p1igemIHILu68oRJtVgBs'
 
 // Importar Supabase
 // <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
