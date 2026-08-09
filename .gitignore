@@ -1,0 +1,71 @@
+# ================================================
+# .gitignore - SingularNãoDorme
+# ================================================
+
+# Arquivos de Sistema
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Editores
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.sublime-project
+.sublime-workspace
+*.code-workspace
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# Variáveis de Ambiente
+.env
+.env.local
+.env.*.local
+
+# Configurações Sensíveis
+supabase.config.local.js
+firebase.config.js
+secrets.json
+
+# Arquivos de Teste
+.pytest_cache/
+__pycache__/
+
+# Builds
+dist/
+build/
+*.o
+*.so
+
+# Logs
+logs/
+*.log
+
+# Dependências Locais
+vendor/
+
+# IDE
+*.iml
+
+# Sistema de Controle
+.git/
+
+# Arquivos Temporários
+temp/
+tmp/
+*.tmp
+
+# Outros
+.cache/
+.netlify
