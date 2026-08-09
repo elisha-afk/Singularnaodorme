@@ -161,42 +161,66 @@ function validateReportForm() {
     return isValid;
 }
 
-function submitReport() {
+async function submitReport() {
     const form = document.getElementById('reportForm');
-    const formData = new FormData(form);
-    
-    // Simular envio
+    const isAnonymous = form.querySelector('#isAnonymous').checked;
+
+    const formData = {
+        tipo: form.querySelector('#reportType').value,
+        descricao: form.querySelector('#description').value,
+        local: form.querySelector('#location').value,
+        data: form.querySelector('#date').value,
+        envolvidos: form.querySelector('#involved').value,
+        testemunhas: form.querySelector('#witnesses').value,
+        severity: form.querySelector('#severity').value,
+        isAnonymous: isAnonymous,
+        name: isAnonymous ? null : form.querySelector('#name').value,
+        email: isAnonymous ? null : form.querySelector('#email').value,
+        phone: isAnonymous ? null : form.querySelector('#phone').value,
+        school: isAnonymous ? null : form.querySelector('#school').value,
+    };
+
     const submitBtn = form.querySelector('button[type="submit"]');
     const originalText = submitBtn.innerHTML;
-    
+
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
 
-    // Aqui você integraria com Firebase ou Formspree
-    // Por enquanto, simulamos sucesso após 2 segundos
-    setTimeout(function() {
-        showSuccessMessage();
+    try {
+        const result = await submitReportToSupabase(formData);
+        showSuccessMessage(result.trackingCode);
         form.reset();
+        // Restaurar aba ativa
+        document.querySelectorAll('.tab-btn').forEach(b => {
+            b.classList.remove('bg-blue-600', 'text-white');
+            b.classList.add('bg-gray-300', 'text-gray-700');
+        });
+        document.querySelector('.tab-btn[data-tab="bullying"]').classList.add('bg-blue-600', 'text-white');
+        document.querySelector('.tab-btn[data-tab="bullying"]').classList.remove('bg-gray-300', 'text-gray-700');
+        document.getElementById('reportType').value = 'bullying';
+    } catch (error) {
+        showFormError(error.message || 'Erro ao enviar denúncia. Tente novamente.');
+    } finally {
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalText;
-    }, 2000);
+    }
 }
 
-function showSuccessMessage() {
+function showSuccessMessage(trackingCode) {
     const modal = document.createElement('div');
     modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+    const code = trackingCode || '---';
     modal.innerHTML = `
-        <div class="bg-white rounded-lg p-8 max-w-sm mx-4 text-center animate-in">
+        <div class="bg-white rounded-lg p-8 max-w-sm mx-4 text-center">
             <div class="text-green-500 text-5xl mb-4">
                 <i class="fas fa-check-circle"></i>
             </div>
             <h2 class="text-2xl font-bold mb-4">Denúncia Enviada!</h2>
             <p class="text-gray-600 mb-4">Sua denúncia foi recebida com sucesso. Nossa equipe analisará o caso.</p>
-            <p class="text-gray-600 mb-6 text-sm">
-                Você pode rastrear sua denúncia usando o código fornecido abaixo:
-            </p>
-            <div class="bg-gray-100 p-4 rounded mb-6">
-                <p class="text-2xl font-bold text-blue-600">#${generateTrackingCode()}</p>
+            <p class="text-gray-600 mb-2 text-sm font-bold">Seu código de rastreamento:</p>
+            <div class="bg-blue-50 border-2 border-blue-300 p-4 rounded mb-6">
+                <p class="text-2xl font-bold text-blue-600 tracking-widest">${code}</p>
+                <p class="text-xs text-gray-500 mt-1">Guarde este código para acompanhar sua denúncia</p>
             </div>
             <button onclick="this.parentElement.parentElement.remove()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded">
                 Entendi
@@ -206,8 +230,16 @@ function showSuccessMessage() {
     document.body.appendChild(modal);
 }
 
-function generateTrackingCode() {
-    return Math.random().toString(36).substring(2, 9).toUpperCase();
+function showFormError(message) {
+    const form = document.getElementById('reportForm');
+    let errorDiv = form.querySelector('.form-submit-error');
+    if (!errorDiv) {
+        errorDiv = document.createElement('div');
+        errorDiv.className = 'form-submit-error alert alert-error mt-4';
+        form.querySelector('.flex.gap-4').after(errorDiv);
+    }
+    errorDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i><div>${message}</div>`;
+    errorDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 // ====== TOGGLE ANONIMATO ======
@@ -243,7 +275,7 @@ function initTrackingForm() {
     });
 }
 
-function searchReport() {
+async function searchReport() {
     const code = document.getElementById('trackingCode').value.trim().toUpperCase();
 
     if (isEmpty(code)) {
@@ -251,23 +283,57 @@ function searchReport() {
         return;
     }
 
-    // Simular busca
     const message = document.getElementById('searchMessage');
-    message.innerHTML = '<div class="spinner mx-auto my-4"></div>';
+    message.innerHTML = '<div class="text-center py-4"><i class="fas fa-spinner fa-spin text-blue-600 text-2xl"></i><p class="text-gray-600 mt-2">Buscando...</p></div>';
 
-    setTimeout(function() {
+    try {
+        const data = await fetchReportByCode(code);
+
+        if (!data) {
+            message.innerHTML = `
+                <div class="alert alert-error">
+                    <i class="fas fa-times-circle"></i>
+                    <div><strong>Código não encontrado.</strong><br>Verifique o código e tente novamente.</div>
+                </div>
+            `;
+            return;
+        }
+
+        const statusMap = {
+            pendente: { label: 'Pendente', color: 'text-yellow-600', icon: 'fa-clock' },
+            investigando: { label: 'Em Investigação', color: 'text-blue-600', icon: 'fa-search' },
+            resolvido: { label: 'Resolvido', color: 'text-green-600', icon: 'fa-check-circle' },
+            fechado: { label: 'Fechado', color: 'text-gray-600', icon: 'fa-lock' },
+        };
+        const tipoMap = { bullying: 'Bullying', conflito: 'Conflito', sugestao: 'Sugestão' };
+
+        const status = statusMap[data.status] || { label: data.status, color: 'text-gray-600', icon: 'fa-info-circle' };
+        const dataFormatada = data.data_criacao
+            ? new Date(data.data_criacao).toLocaleDateString('pt-BR')
+            : 'N/A';
+
         message.innerHTML = `
-            <div class="alert alert-info">
-                <i class="fas fa-info-circle"></i>
-                <div>
-                    <strong>Código: ${code}</strong><br>
-                    Status: <span class="font-bold">Em Análise</span><br>
-                    Data: ${new Date().toLocaleDateString('pt-BR')}<br>
-                    <small>Você receberá atualizações por e-mail</small>
+            <div class="bg-white border-2 border-blue-200 rounded-lg p-6 mt-4">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-bold text-lg">Denúncia #${code}</h3>
+                    <span class="font-bold ${status.color}"><i class="fas ${status.icon} mr-1"></i>${status.label}</span>
+                </div>
+                <div class="space-y-2 text-sm text-gray-600">
+                    <p><strong>Tipo:</strong> ${tipoMap[data.tipo] || data.tipo}</p>
+                    <p><strong>Data do envio:</strong> ${dataFormatada}</p>
+                    ${data.severidade ? `<p><strong>Gravidade:</strong> ${data.severidade}</p>` : ''}
+                    ${data.resposta ? `<div class="mt-4 bg-green-50 border border-green-200 rounded p-4"><p class="font-bold text-green-700 mb-1">Resposta da equipe:</p><p>${data.resposta}</p></div>` : '<p class="text-gray-400 italic">Aguardando análise da equipe.</p>'}
                 </div>
             </div>
         `;
-    }, 1500);
+    } catch (error) {
+        message.innerHTML = `
+            <div class="alert alert-error">
+                <i class="fas fa-exclamation-circle"></i>
+                <div>Erro ao buscar denúncia. Tente novamente.</div>
+            </div>
+        `;
+    }
 }
 
 // ====== PERGUNTAS FREQUENTES ======
