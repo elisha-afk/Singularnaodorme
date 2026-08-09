@@ -13,28 +13,25 @@ Criar um espaço seguro onde alunos possam:
 
 ## 🌐 Sobre o Projeto
 
-**Versão:** 1.0.0  
+**Versão:** 2.0.0
 **Status:** Em Desenvolvimento  
 **Hospedagem:** GitHub Pages  
 **Banco de Dados:** Supabase  
-**Tecnologias:** HTML5, CSS3, JavaScript Vanilla, Tailwind CSS
+**Tecnologias:** React, Vite, Node.js, Supabase Edge Functions
 
 ## 📁 Estrutura do Projeto
 
 ```
 singularnaodorme/
-├── index.html                    # Página inicial
-├── css/
-│   └── styles.css               # Estilos customizados
-├── js/
-│   └── script.js                # JavaScript principal
-├── pages/
-│   ├── relatar.html             # Página de denúncias
-│   ├── recursos.html            # Recursos e apoio
-│   └── faq.html                 # Perguntas frequentes
+├── src/
+│   ├── App.jsx                  # Rotas e telas React
+│   ├── supabase.js              # Cliente HTTP das Edge Functions
+│   └── styles.css               # Estilos da aplicação
+├── package.json                 # Scripts Node.js
+├── vite.config.js               # Exportação estática para Pages
 ├── .github/
 │   └── workflows/
-│       └── deploy.yml           # GitHub Actions (Deploy automático)
+│       └── deploy.yml           # Build e deploy do dist/
 ├── PLANO_PROJETO.md             # Plano detalhado
 ├── README.md                    # Este arquivo
 └── supabase.config.js           # Configuração do Supabase (em breve)
@@ -49,22 +46,22 @@ git clone https://github.com/seu-usuario/singularnaodorme.git
 cd singularnaodorme
 ```
 
-### 2. Abrir no Navegador (Desenvolvimento Local)
+### 2. Executar localmente
 
-Simplesmente abra o arquivo `index.html` em um navegador, ou use um servidor local:
+Requer Node.js 22 ou superior:
 
 ```bash
-# Com Python 3
-python -m http.server 8000
-
-# Com Node.js
-npx http-server
-
-# Com PHP
-php -S localhost:8000
+npm install
+npm run dev
 ```
 
-Depois acesse: `http://localhost:8000`
+Para gerar o export estático:
+
+```bash
+npm run build
+```
+
+O Vite cria o site publicável no diretório `dist/`.
 
 ### 3. Deploy Automático (GitHub Pages)
 
@@ -77,8 +74,7 @@ git push origin main
 
 2. Ative GitHub Pages:
    - Vá para Settings → Pages
-   - Branch: `main`
-   - Pasta: `/ (root)`
+  - Em **Build and deployment**, selecione **GitHub Actions**
    - Clique em Save
 
 3. Pronto! Seu site estará em `https://seu-usuario.github.io/singularnaodorme`
