@@ -25,8 +25,15 @@ Deno.serve(async (req) => {
     // Verificar token de admin (básico)
     const token = new URL(req.url).searchParams.get('token')
     const adminToken = Deno.env.get('ADMIN_TOKEN')
-    
-    if (token !== adminToken) {
+
+      if (!adminToken) {
+        return new Response(
+          JSON.stringify({ error: 'Estatísticas administrativas indisponíveis' }),
+          { status: 503, headers: corsHeaders }
+        )
+      }
+
+      if (!token || token !== adminToken) {
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
         { status: 401, headers: corsHeaders }
@@ -39,7 +46,15 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey)
 
     // Buscar estatísticas
-    const { data: stats } = await supabase.rpc('get_relato_stats')
+      const { data: stats, error } = await supabase.rpc('get_relato_stats')
+
+      if (error) {
+        console.error('Stats error:', error)
+        return new Response(
+          JSON.stringify({ error: 'Erro ao buscar estatísticas' }),
+          { status: 500, headers: corsHeaders }
+        )
+      }
 
     return new Response(
       JSON.stringify(stats || {}),
