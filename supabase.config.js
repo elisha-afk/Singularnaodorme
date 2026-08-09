@@ -18,11 +18,11 @@
 // Tentar ler de variáveis de ambiente primeiro
 const SUPABASE_URL = import.meta?.env?.VITE_SUPABASE_URL || 
                      (typeof process !== 'undefined' && process.env?.SUPABASE_URL) ||
-                     'https://seu-projeto.supabase.co'
+                     'https://xcpfjuvvgzyrnqmhzibu.supabase.co'
 
 const SUPABASE_ANON_KEY = import.meta?.env?.VITE_SUPABASE_ANON_KEY || 
                           (typeof process !== 'undefined' && process.env?.SUPABASE_ANON_KEY) ||
-                          'sua-chave-publica-aqui'
+                          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhjcGZqdXZ2Z3p5cm5xbWh6aWJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYyODk1NTksImV4cCI6MjEwMTg2NTU1OX0.xwFl23__rHZtacBYOyDuZ8p1igemIHILu68oRJtVgBs'
 
 // Importar Supabase
 // <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
