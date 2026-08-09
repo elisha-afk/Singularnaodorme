@@ -237,5 +237,31 @@ async function deleteReport(reportId) {
 // EXPORTAR PARA USO EM OUTROS ARQUIVOS
 // ================================================
 
+// ================================================
+// INSTRUÇÕES DE USO
+// ================================================
+//
+// 1. INCLUIR NO HTML:
+//    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+//    <script src="supabase.config.js"></script>
+//
+// 2. NO JAVASCRIPT DO FORMULÁRIO:
+//    - Chamar submitReportToSupabase(formData) ao enviar
+//    - Chamar fetchReportByCode(code) para rastrear
+//    - Chamar submitContactForm(formData) para contatos
+//
+// 3. EXEMPLO:
+//    const formData = {
+//      tipo: 'bullying',
+//      descricao: 'Fui xingado...',
+//      local: 'Pátio da escola',
+//      data: '2026-08-09',
+//      involved: 'João da Silva',
+//      witnesses: 'Maria e Pedro',
+//      severity: 'moderado',
+//      isAnonymous: true
+//    }
+//    submitReportToSupabase(formData)
+
 // Se usar módulos ES6, descomente:
 // export { supabase, submitReportToSupabase, fetchReportByCode, submitContactForm }
