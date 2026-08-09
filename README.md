@@ -175,7 +175,7 @@ Este projeto está sob a licença MIT - veja o arquivo LICENSE para detalhes.
 
 ## 👥 Autores
 
-- **Jader** - Criador do projeto
+- **Elisha Ariel** - Criador do projeto
 
 ## 📧 Contato
 
