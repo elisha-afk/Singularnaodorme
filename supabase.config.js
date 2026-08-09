@@ -21,7 +21,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const { createClient } = window.supabase
 
 // Criar cliente Supabase
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
 // ================================================
 // FUNÇÕES DE INTEGRAÇÃO COM SUPABASE
@@ -148,7 +148,7 @@ async function submitContactForm(formData) {
  */
 async function fetchAllReports() {
     try {
-        const { data, error } = await supabase
+    const { data, error } = await supabaseClient
             .from('relatos')
             .select('*')
             .order('data_criacao', { ascending: false })
@@ -170,7 +170,7 @@ async function fetchAllReports() {
  */
 async function updateReportStatus(reportId, status, resposta) {
     try {
-        const { data, error } = await supabase
+    const { data, error } = await supabaseClient
             .from('relatos')
             .update({
                 status: status,
@@ -197,7 +197,7 @@ async function updateReportStatus(reportId, status, resposta) {
  */
 async function getStatistics() {
     try {
-        const { data, error } = await supabase
+    const { data, error } = await supabaseClient
             .from('relatos')
             .select('tipo, severidade, status')
 
@@ -238,7 +238,7 @@ async function getStatistics() {
  */
 async function deleteReport(reportId) {
     try {
-        const { error } = await supabase
+    const { error } = await supabaseClient
             .from('relatos')
             .delete()
             .eq('id', reportId)
