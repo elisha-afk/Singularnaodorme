@@ -755,6 +755,33 @@
   font-weight: 900;
   text-transform: uppercase;
 }
+.admin-drawer-danger {
+  padding: 12px 24px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #fff;
+}
+.admin-danger-button {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border: 1px solid #fecdd3;
+  border-radius: 7px;
+  color: #be123c;
+  background: #fff1f2;
+  font-weight: 900;
+}
+.admin-danger-button:hover {
+  background: #ffe4e6;
+}
+.admin-danger-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+.admin-danger-button svg {
+  width: 17px;
+}
 .admin-drawer-tabs {
   display: flex;
   padding: 0 24px;

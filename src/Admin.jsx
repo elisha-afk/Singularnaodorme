@@ -26,6 +26,7 @@ import {
   Send,
   ShieldCheck,
   SlidersHorizontal,
+  Trash2,
   UserCog,
   Users,
   X,
@@ -557,7 +558,7 @@ function AdminDashboard({ profile }) {
             Ver site
           </a>
         </header>
-        {view === "reports" && <ReportsView />}
+        {view === "reports" && <ReportsView isAdmin={profile.role === "admin"} />}
         {view === "units" && profile.role === "admin" && <UnitsView />}
         {view === "users" && profile.role === "admin" && (
           <UsersView currentUser={profile} />
@@ -567,7 +568,7 @@ function AdminDashboard({ profile }) {
   );
 }
 
-function ReportsView() {
+function ReportsView({ isAdmin }) {
   const [stats, setStats] = useState(null);
   const [reports, setReports] = useState([]);
   const [total, setTotal] = useState(0);
@@ -808,6 +809,7 @@ function ReportsView() {
           id={selectedId}
           onClose={() => setSelectedId(null)}
           onUpdated={load}
+          canDelete={isAdmin}
         />
       )}
     </main>
@@ -879,7 +881,7 @@ function ReportRow({ report, onOpen }) {
   );
 }
 
-function ReportDrawer({ id, onClose, onUpdated }) {
+function ReportDrawer({ id, onClose, onUpdated, canDelete }) {
   const [data, setData] = useState(null);
   const [staff, setStaff] = useState([]);
   const [tab, setTab] = useState("details");
@@ -947,6 +949,25 @@ function ReportDrawer({ id, onClose, onUpdated }) {
     } catch (error) {
       setMessage({ type: "error", text: error.message });
     } finally {
+      setSaving(false);
+    }
+  }
+
+  async function removeReport() {
+    if (!canDelete || !data?.report) return;
+    const accepted = window.confirm(
+      `Tem certeza que deseja excluir o relato #${data.report.tracking_code}? Esta ação não pode ser desfeita.`,
+    );
+    if (!accepted) return;
+
+    setSaving(true);
+    setMessage({ type: "", text: "" });
+    try {
+      await adminApi.deleteReport(id);
+      onUpdated();
+      onClose();
+    } catch (error) {
+      setMessage({ type: "error", text: error.message });
       setSaving(false);
     }
   }
@@ -1025,6 +1046,19 @@ function ReportDrawer({ id, onClose, onUpdated }) {
                 </select>
               </label>
             </div>
+            {canDelete && (
+              <div className="admin-drawer-danger">
+                <button
+                  type="button"
+                  className="admin-danger-button"
+                  disabled={saving}
+                  onClick={removeReport}
+                >
+                  <Trash2 />
+                  Excluir denúncia
+                </button>
+              </div>
+            )}
             <nav className="admin-drawer-tabs">
               <button
                 className={tab === "details" ? "active" : ""}

@@ -78,6 +78,27 @@ Deno.serve(async (req) => {
       return jsonResponse({ report: reportResult.data, notes: notesResult.data || [], responses: responsesResult.data || [] })
     }
 
+    if (req.method === 'DELETE' && action === 'report') {
+      if (profile.role !== 'admin') return jsonResponse({ error: 'Ação exclusiva de administradores' }, 403)
+      const id = url.searchParams.get('id')
+      if (!id) return jsonResponse({ error: 'Relato não informado' }, 400)
+
+      const { data: existingReport, error: findError } = await supabase
+        .from('relatos')
+        .select('id,tracking_code')
+        .eq('id', id)
+        .maybeSingle()
+
+      if (findError) throw findError
+      if (!existingReport) return jsonResponse({ error: 'Relato não encontrado' }, 404)
+
+      const { error: deleteError } = await supabase.from('relatos').delete().eq('id', id)
+      if (deleteError) throw deleteError
+
+      await audit(supabase, user.id, 'report.deleted', 'relato', id, { tracking_code: existingReport.tracking_code })
+      return jsonResponse({ success: true })
+    }
+
     if (req.method === 'PATCH' && action === 'report') {
       const body = await req.json()
       if (!body.id) return jsonResponse({ error: 'Relato não informado' }, 400)
