@@ -29,6 +29,14 @@ const statusLabels = {
   fechado: 'Fechado',
 }
 
+const reportTypes = [
+  { value: 'bullying', label: 'Bullying' },
+  { value: 'conflito', label: 'Conflito' },
+  { value: 'sugestao', label: 'Ideia para a escola' },
+]
+
+const reportTypeLabels = Object.fromEntries(reportTypes.map(({ value, label }) => [value, label]))
+
 function useHashRoute() {
   const getRoute = () => window.location.hash.slice(1) || '/'
   const [route, setRoute] = useState(getRoute)
@@ -158,6 +166,17 @@ function ReportPage() {
     setErrors(current => ({ ...current, [field]: '' }))
   }
 
+  function selectType(type) {
+    setReport(current => ({
+      ...current,
+      tipo: type,
+      data_incidente: type === 'sugestao' && !current.data_incidente
+        ? new Date().toISOString().slice(0, 10)
+        : current.data_incidente,
+    }))
+    setErrors({})
+  }
+
   function validate(fields = 'all') {
     const next = {}
     if (fields === 'all' || fields === 1) {
@@ -209,7 +228,7 @@ function ReportPage() {
     setResult(null)
     try {
       const data = await submitReport(report)
-      setResult(data)
+      setResult({ ...data, submittedType: report.tipo })
       setReport(initialReport)
       setAgreed(false)
       setStep(1)
@@ -244,24 +263,24 @@ function ReportPage() {
           {Object.keys(errors).length > 0 && <div className="form-summary" role="alert"><AlertTriangle /><div><strong>Falta só um detalhe</strong><span>Confira o campo destacado para continuar.</span></div></div>}
 
           {step === 1 && <section className="form-step">
-            <div className="step-heading"><span>01</span><div><h2>Como podemos ajudar?</h2><p>Escolha o tipo de relato e como você percebe a gravidade.</p></div></div>
-            <div className="type-tabs">{['bullying', 'conflito', 'sugestao'].map(type => <button key={type} type="button" className={report.tipo === type ? 'active' : ''} onClick={() => update('tipo', type)}>{type}</button>)}</div>
-            <FormField field="severidade" label="Como você avalia essa situação?" error={errors.severidade}><select value={report.severidade} onChange={event => update('severidade', event.target.value)}><option value="">Escolha uma opção</option><option value="leve">Leve — me incomodou</option><option value="moderado">Moderada — está se repetindo</option><option value="grave">Grave — causou medo ou dano</option><option value="critico">Crítica — existe risco imediato</option></select></FormField>
+            <div className="step-heading"><span>01</span><div><h2>Como podemos ajudar?</h2><p>{report.tipo === 'sugestao' ? 'Compartilhe uma ideia para melhorar os espaços, regras ou atividades da escola.' : 'Escolha o tipo de relato e como você percebe a gravidade.'}</p></div></div>
+            <div className="type-tabs">{reportTypes.map(({ value, label }) => <button key={value} type="button" className={report.tipo === value ? 'active' : ''} onClick={() => selectType(value)}>{label}</button>)}</div>
+            <FormField field="severidade" label={report.tipo === 'sugestao' ? 'Qual impacto essa ideia pode ter?' : 'Como você avalia essa situação?'} error={errors.severidade}><select value={report.severidade} onChange={event => update('severidade', event.target.value)}>{report.tipo === 'sugestao' ? <><option value="">Escolha uma opção</option><option value="leve">Pequeno — melhora um detalhe</option><option value="moderado">Médio — ajuda uma turma ou espaço</option><option value="grave">Alto — ajuda muitas pessoas</option><option value="critico">Urgente — resolve um risco ou problema sério</option></> : <><option value="">Escolha uma opção</option><option value="leve">Leve — me incomodou</option><option value="moderado">Moderada — está se repetindo</option><option value="grave">Grave — causou medo ou dano</option><option value="critico">Crítica — existe risco imediato</option></>}</select></FormField>
           </section>}
 
           {step === 2 && <section className="form-step">
-            <div className="step-heading"><span>02</span><div><h2>Conte o que aconteceu</h2><p>Escreva do seu jeito. Você pode incluir apenas o que se sentir confortável.</p></div></div>
-            <FormField field="descricao" label="O que aconteceu?" error={errors.descricao}><textarea value={report.descricao} onChange={event => update('descricao', event.target.value)} placeholder="Conte com suas palavras. Por exemplo: o que fizeram, quantas vezes aconteceu e como você se sentiu." /><span className="character-count">{report.descricao.length}/20 caracteres mínimos</span></FormField>
-            <div className="form-grid"><FormField field="local" label="Onde aconteceu?" error={errors.local}><input value={report.local} onChange={event => update('local', event.target.value)} placeholder="Sala, pátio, corredor ou internet" /></FormField><FormField field="data_incidente" label="Quando aconteceu?" error={errors.data_incidente}><input type="date" max={new Date().toISOString().slice(0, 10)} value={report.data_incidente} onChange={event => update('data_incidente', event.target.value)} /></FormField></div>
-            <FormField label="Quem estava envolvido? (opcional)"><textarea value={report.envolvidos} onChange={event => update('envolvidos', event.target.value)} placeholder="Não precisa informar nomes completos." /></FormField>
-            <FormField label="Alguém viu? (opcional)"><textarea value={report.testemunhas} onChange={event => update('testemunhas', event.target.value)} placeholder="Colegas, professores ou outras pessoas." /></FormField>
+            <div className="step-heading"><span>02</span><div><h2>{report.tipo === 'sugestao' ? 'Conte a sua ideia' : 'Conte o que aconteceu'}</h2><p>{report.tipo === 'sugestao' ? 'Explique o que poderia mudar e como isso ajudaria os estudantes.' : 'Escreva do seu jeito. Você pode incluir apenas o que se sentir confortável.'}</p></div></div>
+            <FormField field="descricao" label={report.tipo === 'sugestao' ? 'O que você gostaria de melhorar?' : 'O que aconteceu?'} error={errors.descricao}><textarea value={report.descricao} onChange={event => update('descricao', event.target.value)} placeholder={report.tipo === 'sugestao' ? 'Por exemplo: criar uma área de leitura no pátio, mudar uma regra ou propor uma nova atividade.' : 'Conte com suas palavras. Por exemplo: o que fizeram, quantas vezes aconteceu e como você se sentiu.'} /><span className="character-count">{report.descricao.length}/20 caracteres mínimos</span></FormField>
+            {report.tipo === 'sugestao' ? <FormField field="local" label="Sobre o que é a sua ideia?" error={errors.local}><select value={report.local} onChange={event => update('local', event.target.value)}><option value="">Escolha uma categoria</option><option value="Espaço físico da escola">Espaço físico da escola</option><option value="Regra da escola">Regra da escola</option><option value="Convivência entre estudantes">Convivência entre estudantes</option><option value="Atividade ou projeto">Atividade ou projeto</option><option value="Outro assunto">Outro assunto</option></select></FormField> : <div className="form-grid"><FormField field="local" label="Onde aconteceu?" error={errors.local}><input value={report.local} onChange={event => update('local', event.target.value)} placeholder="Sala, pátio, corredor ou internet" /></FormField><FormField field="data_incidente" label="Quando aconteceu?" error={errors.data_incidente}><input type="date" max={new Date().toISOString().slice(0, 10)} value={report.data_incidente} onChange={event => update('data_incidente', event.target.value)} /></FormField></div>}
+            <FormField label={report.tipo === 'sugestao' ? 'Quem seria beneficiado? (opcional)' : 'Quem estava envolvido? (opcional)'}><textarea value={report.envolvidos} onChange={event => update('envolvidos', event.target.value)} placeholder={report.tipo === 'sugestao' ? 'Uma turma, todos os estudantes, professores ou a comunidade escolar.' : 'Não precisa informar nomes completos.'} /></FormField>
+            <FormField label={report.tipo === 'sugestao' ? 'Quer acrescentar algum exemplo? (opcional)' : 'Alguém viu? (opcional)'}><textarea value={report.testemunhas} onChange={event => update('testemunhas', event.target.value)} placeholder={report.tipo === 'sugestao' ? 'Conte como essa ideia poderia funcionar na prática.' : 'Colegas, professores ou outras pessoas.'} /></FormField>
           </section>}
 
           {step === 3 && <section className="form-step">
             <div className="step-heading"><span>03</span><div><h2>Você escolhe como enviar</h2><p>O modo anônimo vem ativado. Seus dados pessoais não são necessários.</p></div></div>
             <label className="anonymous-toggle"><input type="checkbox" checked={report.anonimo} onChange={event => update('anonimo', event.target.checked)} /><span><UserRoundCheck /><span><strong>Continuar em anonimato</strong><small>Nenhum dado pessoal será enviado.</small></span></span></label>
             {!report.anonimo && <div className="identified-fields"><FormField field="nome" label="Nome" error={errors.nome}><input value={report.nome} onChange={event => update('nome', event.target.value)} /></FormField><FormField field="email" label="E-mail" error={errors.email}><input type="email" value={report.email} onChange={event => update('email', event.target.value)} /></FormField><FormField field="telefone" label="Telefone" error={errors.telefone}><input value={report.telefone} onChange={event => update('telefone', event.target.value)} /></FormField><FormField field="escola" label="Escola" error={errors.escola}><input value={report.escola} onChange={event => update('escola', event.target.value)} /></FormField></div>}
-            <div className="report-review"><Sparkles /><div><strong>Seu relato está pronto</strong><span>{report.tipo} · {report.severidade} · {report.anonimo ? 'anônimo' : 'identificado'}</span></div></div>
+            <div className="report-review"><Sparkles /><div><strong>{report.tipo === 'sugestao' ? 'Sua ideia está pronta' : 'Seu relato está pronto'}</strong><span>{reportTypeLabels[report.tipo]} · {report.severidade} · {report.anonimo ? 'anônimo' : 'identificado'}</span></div></div>
             <label className="terms" data-field="terms"><input type="checkbox" checked={agreed} onChange={event => { setAgreed(event.target.checked); setErrors(current => ({ ...current, terms: '' })) }} />Confirmo que as informações são verdadeiras e concordo com os Termos de Uso e a Política de Privacidade.</label>
             {errors.terms && <p className="field-error">{errors.terms}</p>}
           </section>}
@@ -269,11 +288,11 @@ function ReportPage() {
           <div className="form-actions">
             {step > 1 && <button type="button" className="button button-ghost" onClick={() => setStep(current => current - 1)}><ArrowLeft />Voltar</button>}
             {step < 3 && <button type="button" className="button button-primary next-button" onClick={nextStep}>Continuar<ArrowRight /></button>}
-            {step === 3 && <button className="button button-success submit-button" disabled={status === 'sending'}>{status === 'sending' ? <><span className="spinner" />Enviando com segurança...</> : <><Send />Enviar denúncia</>}</button>}
+            {step === 3 && <button className="button button-success submit-button" disabled={status === 'sending'}>{status === 'sending' ? <><span className="spinner" />Enviando com segurança...</> : <><Send />{report.tipo === 'sugestao' ? 'Enviar ideia' : 'Enviar denúncia'}</>}</button>}
           </div>
           {status === 'error' && <p className="notice error">{result.error}</p>}
         </form>
-        {status === 'success' && <section className="notice success"><CheckCircle2 /><div><h2>Denúncia enviada</h2><p>Guarde o seu código de rastreamento:</p><strong>{result.trackingCode}</strong><button type="button" className="text-button" onClick={() => setStatus('idle')}>Enviar outro relato</button></div></section>}
+        {status === 'success' && <section className="notice success"><CheckCircle2 /><div><h2>{result.submittedType === 'sugestao' ? 'Ideia enviada' : 'Denúncia enviada'}</h2><p>Guarde o seu código de rastreamento:</p><strong>{result.trackingCode}</strong><button type="button" className="text-button" onClick={() => setStatus('idle')}>{result.submittedType === 'sugestao' ? 'Enviar outra ideia' : 'Enviar outro relato'}</button></div></section>}
         <section className="tracking-card"><h2><Search />Rastrear sua denúncia</h2><p>Digite o código recebido ao enviar seu relato.</p><form onSubmit={search}><input value={trackingCode} onChange={event => setTrackingCode(event.target.value)} placeholder="Código de rastreamento" /><button className="button button-primary">Buscar</button></form>{tracking.state === 'loading' && <p>Buscando...</p>}{tracking.state === 'error' && <p className="notice error">{tracking.message}</p>}{tracking.state === 'success' && <div className="notice"><p><strong>Status:</strong> {statusLabels[tracking.data.status] || tracking.data.status}</p><p><strong>Tipo:</strong> {tracking.data.tipo}</p><p><strong>Data:</strong> {new Date(tracking.data.data_criacao).toLocaleDateString('pt-BR')}</p></div>}</section>
       </div>
     </main>
