@@ -15,14 +15,6 @@
 const SUPABASE_URL = 'https://xcpfjuvvgzyrnqmhzibu.supabase.co'
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhjcGZqdXZ2Z3p5cm5xbWh6aWJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYyODk1NTksImV4cCI6MjEwMTg2NTU1OX0.xwFl23__rHZtacBYOyDuZ8p1igemIHILu68oRJtVgBs'
 
-// Importar Supabase
-// <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
-
-const { createClient } = window.supabase
-
-// Criar cliente Supabase
-const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-
 // ================================================
 // FUNÇÕES DE INTEGRAÇÃO COM SUPABASE
 // ================================================
@@ -74,7 +66,6 @@ async function submitReportToSupabase(formData) {
         throw error
     }
 }
-
 /**
  * Buscar relato por código de rastreamento (via Edge Function)
  */
@@ -142,148 +133,3 @@ async function submitContactForm(formData) {
     }
 }
 
-/**
- * Listar todos os relatos (Admin)
- * CUIDADO: Apenas para administradores autenticados
- */
-async function fetchAllReports() {
-    try {
-    const { data, error } = await supabaseClient
-            .from('relatos')
-            .select('*')
-            .order('data_criacao', { ascending: false })
-
-        if (error) {
-            console.error('Erro ao listar relatos:', error)
-            return []
-        }
-
-        return data
-    } catch (error) {
-        console.error('Erro:', error.message)
-        return []
-    }
-}
-
-/**
- * Atualizar status de um relato
- */
-async function updateReportStatus(reportId, status, resposta) {
-    try {
-    const { data, error } = await supabaseClient
-            .from('relatos')
-            .update({
-                status: status,
-                resposta: resposta,
-                data_atualizacao: new Date().toISOString()
-            })
-            .eq('id', reportId)
-            .select()
-
-        if (error) {
-            console.error('Erro ao atualizar relato:', error)
-            throw error
-        }
-
-        return data[0]
-    } catch (error) {
-        console.error('Erro:', error.message)
-        throw error
-    }
-}
-
-/**
- * Listar estatísticas (Admin)
- */
-async function getStatistics() {
-    try {
-    const { data, error } = await supabaseClient
-            .from('relatos')
-            .select('tipo, severidade, status')
-
-        if (error) {
-            console.error('Erro ao buscar estatísticas:', error)
-            return null
-        }
-
-        // Processar dados
-        const stats = {
-            total: data.length,
-            por_tipo: {},
-            por_severidade: {},
-            por_status: {}
-        }
-
-        data.forEach(report => {
-            // Contar por tipo
-            stats.por_tipo[report.tipo] = (stats.por_tipo[report.tipo] || 0) + 1
-
-            // Contar por severidade
-            stats.por_severidade[report.severidade] = (stats.por_severidade[report.severidade] || 0) + 1
-
-            // Contar por status
-            stats.por_status[report.status] = (stats.por_status[report.status] || 0) + 1
-        })
-
-        return stats
-    } catch (error) {
-        console.error('Erro:', error.message)
-        return null
-    }
-}
-
-/**
- * Deletar um relato (Admin)
- * CUIDADO: Ação irreversível
- */
-async function deleteReport(reportId) {
-    try {
-    const { error } = await supabaseClient
-            .from('relatos')
-            .delete()
-            .eq('id', reportId)
-
-        if (error) {
-            console.error('Erro ao deletar relato:', error)
-            throw error
-        }
-
-        console.log('Relato deletado com sucesso')
-    } catch (error) {
-        console.error('Erro:', error.message)
-        throw error
-    }
-}
-
-// ================================================
-// EXPORTAR PARA USO EM OUTROS ARQUIVOS
-// ================================================
-
-// ================================================
-// INSTRUÇÕES DE USO
-// ================================================
-//
-// 1. INCLUIR NO HTML:
-//    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
-//    <script src="supabase.config.js"></script>
-//
-// 2. NO JAVASCRIPT DO FORMULÁRIO:
-//    - Chamar submitReportToSupabase(formData) ao enviar
-//    - Chamar fetchReportByCode(code) para rastrear
-//    - Chamar submitContactForm(formData) para contatos
-//
-// 3. EXEMPLO:
-//    const formData = {
-//      tipo: 'bullying',
-//      descricao: 'Fui xingado...',
-//      local: 'Pátio da escola',
-//      data: '2026-08-09',
-//      involved: 'João da Silva',
-//      witnesses: 'Maria e Pedro',
-//      severity: 'moderado',
-//      isAnonymous: true
-//    }
-//    submitReportToSupabase(formData)
-
-// Se usar módulos ES6, descomente:
-// export { supabase, submitReportToSupabase, fetchReportByCode, submitContactForm }

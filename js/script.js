@@ -104,6 +104,8 @@ function validateReportForm() {
     const email = form.querySelector('#email').value;
     const phone = form.querySelector('#phone').value;
     const isAnonymous = form.querySelector('#isAnonymous').checked;
+        const severity = form.querySelector('#severity').value;
+        const agreeTerms = form.querySelector('#agreeTerms').checked;
 
     let isValid = true;
 
@@ -134,6 +136,11 @@ function validateReportForm() {
         isValid = false;
     }
 
+        if (isEmpty(severity)) {
+            showError(form.querySelector('#severity'), 'Selecione o nível de severidade');
+            isValid = false;
+        }
+
     // Se não anônimo, validar dados de contato
     if (!isAnonymous) {
         if (isEmpty(name)) {
@@ -157,6 +164,11 @@ function validateReportForm() {
             isValid = false;
         }
     }
+
+        if (!agreeTerms) {
+            showFormError('Você precisa concordar com os Termos de Uso e a Política de Privacidade.');
+            isValid = false;
+        }
 
     return isValid;
 }
