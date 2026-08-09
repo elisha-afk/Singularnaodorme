@@ -42,6 +42,7 @@ package-lock.json
 supabase.config.local.js
 firebase.config.js
 secrets.json
+supabase/.temp/
 
 # Arquivos de Teste
 .pytest_cache/
