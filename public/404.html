@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SingularNãoDorme</title>
+  </head>
+  <body>
+    <script>
+      const routes = {
+        '/pages/relatar.html': '/relatar',
+        '/pages/recursos.html': '/recursos',
+        '/pages/faq.html': '/faq',
+      }
+      const base = '/Singularnaodorme'
+      const path = window.location.pathname.replace(base, '')
+      window.location.replace(`${base}/#${routes[path] || '/'}`)
+    </script>
+  </body>
+</html>
