@@ -71,6 +71,10 @@ const roleLabels = {
   coordinator: "Coordenação",
   orientacao: "Orientação",
 };
+const destinationLabels = {
+  coordenacao: "Coordenação",
+  orientacao: "Orientação",
+};
 
 function formatDate(value, includeTime = false) {
   if (!value) return "Não informado";
@@ -568,7 +572,7 @@ function AdminDashboard({ profile }) {
             <Menu />
           </button>
           <div>
-            <span>Painel da coordenação</span>
+            <span>{profile.role === "orientacao" ? "Painel da orientação" : "Painel da coordenação"}</span>
             <strong>{profile.school || "Todas as unidades"}</strong>
           </div>
           <button
@@ -608,6 +612,7 @@ function ReportsView({ isAdmin }) {
     severidade: "",
     priority: "",
     anonimo: "",
+    destino: "",
   });
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState(null);
@@ -640,6 +645,7 @@ function ReportsView({ isAdmin }) {
     filters.severidade,
     filters.priority,
     filters.anonimo,
+    filters.destino,
   ]);
 
   function search(event) {
@@ -744,6 +750,17 @@ function ReportsView({ isAdmin }) {
                 setFilters((current) => ({ ...current, priority: value }));
               }}
             />
+            {isAdmin && (
+              <SelectFilter
+                label="Destino"
+                value={filters.destino}
+                options={destinationLabels}
+                onChange={(value) => {
+                  setPage(1);
+                  setFilters((current) => ({ ...current, destino: value }));
+                }}
+              />
+            )}
             <select
               aria-label="Identificação"
               value={filters.anonimo}
@@ -780,6 +797,7 @@ function ReportsView({ isAdmin }) {
                   <tr>
                     <th>Relato</th>
                     <th>Categoria</th>
+                    <th>Destino</th>
                     <th>Status</th>
                     <th>Gravidade</th>
                     <th>Prioridade</th>
@@ -797,7 +815,7 @@ function ReportsView({ isAdmin }) {
                   ))}
                   {reports.length === 0 && (
                     <tr>
-                      <td colSpan="7">
+                      <td colSpan="8">
                         <div className="admin-empty">
                           <Search />
                           <strong>Nenhum relato encontrado</strong>
@@ -888,6 +906,7 @@ function ReportRow({ report, onOpen }) {
           {typeLabels[report.tipo] || report.tipo}
         </span>
       </td>
+      <td>{destinationLabels[report.destino] || report.destino}</td>
       <td>
         <span className={`admin-status ${report.status}`}>
           {statusLabels[report.status] || report.status}
@@ -1163,6 +1182,7 @@ function ReportDetails({ report }) {
         value={formatDate(report.data_incidente)}
       />
       <Detail label="Gravidade" value={severityLabels[report.severidade]} />
+      <Detail label="Equipe responsável" value={destinationLabels[report.destino] || report.destino} />
       <Detail
         label="Identificação"
         value={report.anonimo ? "Relato anônimo" : report.nome}
@@ -1191,7 +1211,7 @@ function ReportDetails({ report }) {
           <Detail label="Telefone" value={report.telefone} />
         </>
       )}
-      <Detail label="Unidade" value={report.escola} />
+      {report.escola && <Detail label="Unidade" value={report.escola} />}
     </div>
   );
 }

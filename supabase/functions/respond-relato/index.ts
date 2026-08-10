@@ -15,8 +15,10 @@ Deno.serve(async (req) => {
     const message = String(body.message || '').trim()
     if (!body.relato_id || subject.length < 3 || message.length < 2 || message.length > 10000) return jsonResponse({ error: 'Assunto ou mensagem inválidos' }, 400)
 
-    const { data: report, error: reportError } = await supabase.from('relatos').select('id,tracking_code,tipo,anonimo,email,nome').eq('id', body.relato_id).single()
+    const { data: report, error: reportError } = await supabase.from('relatos').select('id,tracking_code,tipo,anonimo,email,nome,destino').eq('id', body.relato_id).single()
     if (reportError || !report) return jsonResponse({ error: 'Relato não encontrado' }, 404)
+    const allowedDestination = profile.role === 'admin' ? null : profile.role === 'orientacao' ? 'orientacao' : 'coordenacao'
+    if (allowedDestination && report.destino !== allowedDestination) return jsonResponse({ error: 'Relato não encontrado' }, 404)
     if (report.anonimo || !report.email) return jsonResponse({ error: 'Relatos anônimos não possuem endereço para resposta' }, 400)
 
     const { data: responseRecord, error: insertError } = await supabase.from('relato_responses').insert({
@@ -44,7 +46,7 @@ Deno.serve(async (req) => {
         from: resendFrom,
         to: [report.email],
         subject,
-        html: `<div style="font-family:Arial,sans-serif;max-width:640px;margin:auto;color:#172554"><div style="margin-bottom:24px"><img src="https://singularnaodorme.com.br/singular-nao-dorme-logo.png" width="64" height="67" alt="SingularNãoDorme" style="display:block;border:0;object-fit:contain"><h1 style="margin:8px 0 0;color:#2457e6">SingularNãoDorme</h1></div><p>${greeting}</p><p>${escapeHtml(message).replace(/\n/g, '<br>')}</p><p style="margin-top:28px;color:#526078">Código do relato: <strong>${escapeHtml(report.tracking_code)}</strong></p><p>Coordenação · ${escapeHtml(profile.school || 'Equipe escolar')}</p></div>`,
+        html: `<div style="font-family:Arial,sans-serif;max-width:640px;margin:auto;color:#172554"><div style="margin-bottom:24px"><img src="https://singularnaodorme.com.br/singular-nao-dorme-logo.png" width="64" height="67" alt="SingularNãoDorme" style="display:block;border:0;object-fit:contain"><h1 style="margin:8px 0 0;color:#2457e6">SingularNãoDorme</h1></div><p>${greeting}</p><p>${escapeHtml(message).replace(/\n/g, '<br>')}</p><p style="margin-top:28px;color:#526078">Código do relato: <strong>${escapeHtml(report.tracking_code)}</strong></p><p>${report.destino === 'orientacao' ? 'Orientação' : 'Coordenação'} · ${escapeHtml(profile.school || 'Equipe escolar')}</p></div>`,
       }),
     })
     const resendData = await resendResponse.json().catch(() => ({}))

@@ -15,7 +15,7 @@ interface RelatoData {
   nome?: string
   email?: string
   telefone?: string
-  escola?: string
+  destino: string
 }
 
 // CORS headers
@@ -60,20 +60,6 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     
     const supabase = createClient(supabaseUrl, supabaseKey)
-
-    const { data: unit, error: unitError } = await supabase
-      .from('school_units')
-      .select('id')
-      .eq('active', true)
-      .ilike('name', sanitizedData.escola)
-      .maybeSingle()
-
-    if (unitError || !unit) {
-      return new Response(
-        JSON.stringify({ error: 'A unidade selecionada não está disponível.' }),
-        { status: 400, headers: corsHeaders }
-      )
-    }
 
     // Gerar código de rastreamento
     const trackingCode = generateTrackingCode()
@@ -152,8 +138,8 @@ function validateRelato(data: RelatoData) {
     errors.push('Severidade inválida')
   }
 
-  if (!data.escola || data.escola.trim().length < 2) {
-    errors.push('Unidade escolar é obrigatória')
+  if (!data.destino || !['coordenacao', 'orientacao'].includes(data.destino)) {
+    errors.push('Destino da denúncia inválido')
   }
 
   if (!data.anonimo) {
@@ -188,7 +174,7 @@ function sanitizeRelato(data: RelatoData) {
     nome: data.anonimo ? null : data.nome?.trim().substring(0, 255),
     email: data.anonimo ? null : data.email?.trim().toLowerCase(),
     telefone: data.anonimo ? null : data.telefone?.replace(/\D/g, ''),
-    escola: data.escola?.trim().substring(0, 255),
+    destino: data.destino?.trim().toLowerCase(),
   }
 }
 
