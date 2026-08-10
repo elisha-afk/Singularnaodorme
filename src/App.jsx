@@ -20,7 +20,6 @@ const initialReport = {
   nome: '',
   email: '',
   telefone: '',
-  destino: 'coordenacao',
 }
 
 const statusLabels = {
@@ -198,7 +197,6 @@ function ReportPage() {
       if (!report.local.trim()) next.local = 'Indique onde aconteceu.'
       if (!report.data_incidente) next.data_incidente = 'Indique quando aconteceu.'
       if (report.data_incidente > new Date().toISOString().slice(0, 10)) next.data_incidente = 'A data não pode estar no futuro.'
-      if (!['coordenacao', 'orientacao'].includes(report.destino)) next.destino = 'Selecione para qual equipe deseja enviar.'
     }
     if (fields === 'all' || fields === 3) {
       if (!report.anonimo) {
@@ -231,7 +229,7 @@ function ReportPage() {
     event.preventDefault()
     if (!validate('all')) {
       if (!report.severidade) setStep(1)
-      else if (report.descricao.trim().length < 20 || !report.local || !report.data_incidente || !['coordenacao', 'orientacao'].includes(report.destino)) setStep(2)
+      else if (report.descricao.trim().length < 20 || !report.local || !report.data_incidente) setStep(2)
       else setStep(3)
       return
     }
@@ -284,7 +282,6 @@ function ReportPage() {
             <div className="step-heading"><span>02</span><div><h2>{report.tipo === 'sugestao' ? 'Conte a sua ideia' : 'Conte o que aconteceu'}</h2><p>{report.tipo === 'sugestao' ? 'Explique o que poderia mudar e como isso ajudaria os estudantes.' : 'Escreva do seu jeito. Você pode incluir apenas o que se sentir confortável.'}</p></div></div>
             <FormField field="descricao" label={report.tipo === 'sugestao' ? 'O que você gostaria de melhorar?' : 'O que aconteceu?'} error={errors.descricao}><textarea value={report.descricao} onChange={event => update('descricao', event.target.value)} placeholder={report.tipo === 'sugestao' ? 'Por exemplo: criar uma área de leitura no pátio, mudar uma regra ou propor uma nova atividade.' : 'Conte com suas palavras. Por exemplo: o que fizeram, quantas vezes aconteceu e como você se sentiu.'} /><span className="character-count">{report.descricao.length}/20 caracteres mínimos</span></FormField>
             {report.tipo === 'sugestao' ? <FormField field="local" label="Sobre o que é a sua ideia?" error={errors.local}><select value={report.local} onChange={event => update('local', event.target.value)}><option value="">Escolha uma categoria</option><option value="Espaço físico da escola">Espaço físico da escola</option><option value="Regra da escola">Regra da escola</option><option value="Convivência entre estudantes">Convivência entre estudantes</option><option value="Atividade ou projeto">Atividade ou projeto</option><option value="Outro assunto">Outro assunto</option></select></FormField> : <div className="form-grid"><FormField field="local" label="Onde aconteceu?" error={errors.local}><input value={report.local} onChange={event => update('local', event.target.value)} placeholder="Sala, pátio, corredor ou internet" /></FormField><FormField field="data_incidente" label="Quando aconteceu?" error={errors.data_incidente}><input type="date" max={new Date().toISOString().slice(0, 10)} value={report.data_incidente} onChange={event => update('data_incidente', event.target.value)} /></FormField></div>}
-            <FormField field="destino" label="Para qual equipe você quer enviar este relato?" error={errors.destino}><select value={report.destino} onChange={event => update('destino', event.target.value)}><option value="coordenacao">Coordenação</option><option value="orientacao">Orientação</option></select></FormField>
             <FormField label={report.tipo === 'sugestao' ? 'Quem seria beneficiado? (opcional)' : 'Quem estava envolvido? (opcional)'}><textarea value={report.envolvidos} onChange={event => update('envolvidos', event.target.value)} placeholder={report.tipo === 'sugestao' ? 'Uma turma, todos os estudantes, professores ou a comunidade escolar.' : 'Não precisa informar nomes completos.'} /></FormField>
             <FormField label={report.tipo === 'sugestao' ? 'Quer acrescentar algum exemplo? (opcional)' : 'Alguém viu? (opcional)'}><textarea value={report.testemunhas} onChange={event => update('testemunhas', event.target.value)} placeholder={report.tipo === 'sugestao' ? 'Conte como essa ideia poderia funcionar na prática.' : 'Colegas, professores ou outras pessoas.'} /></FormField>
           </section>}

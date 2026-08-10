@@ -15,7 +15,6 @@ interface RelatoData {
   nome?: string
   email?: string
   telefone?: string
-  destino: string
 }
 
 // CORS headers
@@ -138,10 +137,6 @@ function validateRelato(data: RelatoData) {
     errors.push('Severidade inválida')
   }
 
-  if (!data.destino || !['coordenacao', 'orientacao'].includes(data.destino)) {
-    errors.push('Destino da denúncia inválido')
-  }
-
   if (!data.anonimo) {
     if (!data.nome || data.nome.length < 3) {
       errors.push('Nome deve ter mínimo 3 caracteres')
@@ -174,7 +169,7 @@ function sanitizeRelato(data: RelatoData) {
     nome: data.anonimo ? null : data.nome?.trim().substring(0, 255),
     email: data.anonimo ? null : data.email?.trim().toLowerCase(),
     telefone: data.anonimo ? null : data.telefone?.replace(/\D/g, ''),
-    destino: data.destino?.trim().toLowerCase(),
+    destino: data.tipo === 'sugestao' ? 'orientacao' : 'coordenacao',
   }
 }
 
