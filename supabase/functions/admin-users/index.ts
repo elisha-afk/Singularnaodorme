@@ -21,7 +21,7 @@ Deno.serve(async (req) => {
       const email = String(body.email || '').trim().toLowerCase()
       const name = String(body.name || '').trim()
       const password = String(body.password || '')
-      const role = body.role === 'admin' ? 'admin' : 'coordinator'
+      const role = ['admin', 'coordinator', 'orientacao'].includes(body.role) ? body.role : 'coordinator'
       if (!/^\S+@\S+\.\S+$/.test(email) || name.length < 3 || password.length < 10) return jsonResponse({ error: 'Informe nome, e-mail válido e senha temporária com ao menos 10 caracteres' }, 400)
 
       const { data: created, error: createError } = await supabase.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { name } })
@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
       if (body.id === user.id && body.active === false) return jsonResponse({ error: 'Você não pode desativar seu próprio acesso' }, 400)
       const changes: Record<string, unknown> = { updated_at: new Date().toISOString() }
       if (typeof body.name === 'string' && body.name.trim().length >= 3) changes.name = body.name.trim()
-      if (body.role === 'admin' || body.role === 'coordinator') changes.role = body.role
+      if (['admin', 'coordinator', 'orientacao'].includes(body.role)) changes.role = body.role
       if (typeof body.active === 'boolean') changes.active = body.active
       if (typeof body.school === 'string') changes.school = body.school.trim() || null
       if (typeof body.password === 'string' && body.password.length >= 10) {

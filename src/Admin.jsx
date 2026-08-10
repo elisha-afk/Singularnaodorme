@@ -66,6 +66,11 @@ const priorityLabels = {
   high: "Alta",
   urgent: "Urgente",
 };
+const roleLabels = {
+  admin: "Administrador",
+  coordinator: "Coordenação",
+  orientacao: "Orientação",
+};
 
 function formatDate(value, includeTime = false) {
   if (!value) return "Não informado";
@@ -545,7 +550,7 @@ function AdminDashboard({ profile }) {
           <div>
             <strong>{profile.name}</strong>
             <small>
-              {profile.role === "admin" ? "Administrador" : "Coordenação"}
+              {roleLabels[profile.role] || profile.role}
             </small>
           </div>
           <button title="Sair" onClick={() => authClient.auth.signOut()}>
@@ -1545,7 +1550,7 @@ function UsersView({ currentUser }) {
               <div>
                 <span>Perfil</span>
                 <strong>
-                  {user.role === "admin" ? "Administrador" : "Coordenação"}
+                  {roleLabels[user.role] || user.role}
                 </strong>
               </div>
               <div>
@@ -1739,6 +1744,7 @@ function CreateUserModal({ onClose, onCreated }) {
               onChange={(event) => update("role", event.target.value)}
             >
               <option value="coordinator">Coordenação</option>
+              <option value="orientacao">Orientação</option>
               <option value="admin">Administrador</option>
             </select>
           </label>
