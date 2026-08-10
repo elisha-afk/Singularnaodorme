@@ -974,7 +974,7 @@ function ReportDrawer({ id, onClose, onUpdated, canDelete }) {
   }
 
   async function removeReport() {
-    if (!canDelete || !data?.report) return;
+    if (!canDelete || data?.report?.status !== "resolvido") return;
     const accepted = window.confirm(
       `Tem certeza que deseja excluir o relato #${data.report.tracking_code}? Esta ação não pode ser desfeita.`,
     );
@@ -1066,7 +1066,7 @@ function ReportDrawer({ id, onClose, onUpdated, canDelete }) {
                 </select>
               </label>
             </div>
-            {canDelete && (
+            {canDelete && data.report.status === "resolvido" && (
               <div className="admin-drawer-danger">
                 <button
                   type="button"

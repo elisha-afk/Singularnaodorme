@@ -85,12 +85,13 @@ Deno.serve(async (req) => {
 
       const { data: existingReport, error: findError } = await supabase
         .from('relatos')
-        .select('id,tracking_code')
+        .select('id,tracking_code,status')
         .eq('id', id)
         .maybeSingle()
 
       if (findError) throw findError
       if (!existingReport) return jsonResponse({ error: 'Relato não encontrado' }, 404)
+      if (existingReport.status !== 'resolvido') return jsonResponse({ error: 'A denúncia só pode ser excluída quando estiver resolvida' }, 409)
 
       const { error: deleteError } = await supabase.from('relatos').delete().eq('id', id)
       if (deleteError) throw deleteError
