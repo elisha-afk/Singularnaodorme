@@ -102,6 +102,24 @@ body { background: #f7f9ff; }
 @media (max-width: 620px) { .report-container { width: min(100% - 20px, 850px); }.form-actions { flex-wrap: wrap; }.next-button, .submit-button, .button-ghost { width: 100%; }.button-ghost { order: 2; }.progress-step small { font-size: .73rem; }.step-heading h2 { font-size: 1.3rem; } }
 @media (max-width: 620px) { .resource-grid { grid-template-columns: 1fr; }.resource-card { min-height: 230px; }.faq-help { align-items: flex-start; flex-wrap: wrap; }.faq-help a { width: 100%; margin-left: 37px; } }
 
+.terms > span { display: inline; }
+.terms a { color: #1d4ed8; font-weight: 800; text-underline-offset: 3px; }
+.terms a:hover { color: #173bb0; }
+.legal-page .container { max-width: 880px; }
+.legal-back { display: inline-flex; align-items: center; gap: 7px; margin-bottom: 24px; color: #1d4ed8; font-weight: 800; text-decoration: none; }
+.legal-back:hover { text-decoration: underline; text-underline-offset: 4px; }
+.legal-back svg { width: 18px; }
+.legal-content { padding: 30px; border: 1px solid #e0e7ff; border-radius: 8px; background: #fff; box-shadow: 0 4px 14px rgb(15 23 42 / 8%); }
+.legal-content h2 { margin: 28px 0 8px; color: #172554; font-size: 1.2rem; }
+.legal-content h2:first-child { margin-top: 0; }
+.legal-content p { margin: 0; color: #4b5563; line-height: 1.7; }
+.site-theme-dark .terms a,
+.site-theme-dark .legal-back { color: #93c5fd; }
+.site-theme-dark .legal-content { border-color: #334155; background: #0b1220; }
+.site-theme-dark .legal-content h2 { color: #e2e8f0; }
+.site-theme-dark .legal-content p { color: #94a3b8; }
+@media (max-width: 620px) { .legal-content { padding: 21px; } }
+
 .site-theme-dark {
   color: #e2e8f0;
   background: #0f172a;

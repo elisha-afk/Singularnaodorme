@@ -291,7 +291,7 @@ function ReportPage() {
             <label className="anonymous-toggle"><input type="checkbox" checked={report.anonimo} onChange={event => update('anonimo', event.target.checked)} /><span><UserRoundCheck /><span><strong>Continuar em anonimato</strong><small>Nenhum dado pessoal será enviado.</small></span></span></label>
             {!report.anonimo && <div className="identified-fields"><FormField field="nome" label="Nome" error={errors.nome}><input value={report.nome} onChange={event => update('nome', event.target.value)} /></FormField><FormField field="email" label="E-mail" error={errors.email}><input type="email" value={report.email} onChange={event => update('email', event.target.value)} /></FormField><FormField field="telefone" label="Telefone" error={errors.telefone}><input value={report.telefone} onChange={event => update('telefone', event.target.value)} /></FormField></div>}
             <div className="report-review"><Sparkles /><div><strong>{report.tipo === 'sugestao' ? 'Sua ideia está pronta' : 'Seu relato está pronto'}</strong><span>{reportTypeLabels[report.tipo]} · {report.severidade} · {report.anonimo ? 'anônimo' : 'identificado'}</span></div></div>
-            <label className="terms" data-field="terms"><input type="checkbox" checked={agreed} onChange={event => { setAgreed(event.target.checked); setErrors(current => ({ ...current, terms: '' })) }} />Confirmo que as informações são verdadeiras e concordo com os Termos de Uso e a Política de Privacidade.</label>
+            <label className="terms" data-field="terms"><input type="checkbox" checked={agreed} onChange={event => { setAgreed(event.target.checked); setErrors(current => ({ ...current, terms: '' })) }} /><span>Confirmo que as informações são verdadeiras e concordo com os <a href="#/termos" onClick={event => event.stopPropagation()}>Termos de Uso</a> e a <a href="#/privacidade" onClick={event => event.stopPropagation()}>Política de Privacidade</a>.</span></label>
             {errors.terms && <p className="field-error">{errors.terms}</p>}
           </section>}
 
@@ -336,6 +336,18 @@ function Faq() {
   return <InfoPage title="Perguntas que podem estar na sua cabeça"><p className="page-lead">Respostas diretas, sem julgamento. Clique em uma pergunta para abrir.</p><div className="faq-list">{questions.map(([question, answer], index) => <details key={question} open={index === 0}><summary>{question}<span>+</span></summary><p>{answer}</p></details>)}</div><div className="faq-help"><Heart /><div><strong>Ainda ficou com dúvida?</strong><span>Você pode buscar apoio antes de decidir fazer um relato.</span></div><a href="#/recursos">Ver recursos de apoio</a></div></InfoPage>
 }
 
+function TermsPage() {
+  return <LegalPage title="Termos de Uso" updated="10 de agosto de 2026"><h2>1. Finalidade do canal</h2><p>O SingularNãoDorme é um canal escolar para registrar relatos de bullying, conflitos e sugestões. O serviço não substitui atendimento de emergência. Em situação de risco imediato, procure um adulto responsável ou ligue 190.</p><h2>2. Uso responsável</h2><p>Ao enviar um relato, você declara que as informações são verdadeiras conforme seu conhecimento. Não use o canal para ameaçar, ofender, expor pessoas deliberadamente ou registrar informações falsas.</p><h2>3. Anonimato e acompanhamento</h2><p>Você pode enviar o relato anonimamente. Nesse caso, nenhum dado pessoal de identificação é solicitado. O código exibido após o envio é a única forma de acompanhar o relato e não pode ser recuperado se for perdido.</p><h2>4. Tratamento do relato</h2><p>Os relatos são encaminhados automaticamente à Coordenação ou à Orientação, conforme o tipo escolhido, e podem ser analisados, priorizados, investigados e respondidos pela equipe autorizada.</p><h2>5. Limites do serviço</h2><p>A plataforma busca manter o canal disponível e seguro, mas interrupções técnicas podem ocorrer. O envio de um relato não garante uma medida específica ou prazo determinado, pois cada situação exige análise própria.</p></LegalPage>
+}
+
+function PrivacyPage() {
+  return <LegalPage title="Política de Privacidade" updated="10 de agosto de 2026"><h2>1. Dados tratados</h2><p>O canal registra o conteúdo do relato, categoria, gravidade, data, local, envolvidos e testemunhas informados. Nome, e-mail e telefone são coletados somente quando você desativa o anonimato.</p><h2>2. Finalidade</h2><p>Os dados são usados para receber, encaminhar, acompanhar e responder relatos, proteger a comunidade escolar, manter registros de auditoria e administrar o acesso das equipes autorizadas.</p><h2>3. Acesso e compartilhamento</h2><p>Coordenação e Orientação acessam somente os relatos destinados às suas equipes. Administradores autorizados podem visualizar todos os relatos para gestão e segurança do canal. Dados não são vendidos.</p><h2>4. Proteção e conservação</h2><p>O acesso administrativo exige autenticação. As informações são mantidas pelo período necessário ao acompanhamento do relato, ao cumprimento das responsabilidades da instituição e à proteção dos envolvidos.</p><h2>5. Direitos do titular</h2><p>Nos relatos identificados, você pode solicitar informações, correção ou análise sobre seus dados pelos canais oficiais da escola, observados os limites legais e a proteção de outras pessoas envolvidas.</p><h2>6. Relatos anônimos</h2><p>Como o relato anônimo não contém identificação, a escola pode não conseguir relacioná-lo posteriormente à pessoa que o enviou. Guarde o código de rastreamento para consultar o andamento.</p></LegalPage>
+}
+
+function LegalPage({ title, updated, children }) {
+  return <main className="info-page legal-page"><div className="container"><a className="legal-back" href="#/relatar"><ArrowLeft />Voltar à denúncia</a><h1>{title}</h1><p className="page-lead">Última atualização: {updated}</p><article className="legal-content">{children}</article></div></main>
+}
+
 function Footer() {
   return <footer><div className="container footer-grid"><div><h2>Precisa de ajuda imediata?</h2><p>CVV: <strong>188</strong> · Emergência: <strong>190</strong> · Direitos Humanos: <strong>100</strong></p></div><p>© 2026 SingularNãoDorme. Sua voz segura contra o bullying.</p></div></footer>
 }
@@ -353,7 +365,7 @@ export default function App() {
 
   const isAdminRecovery = new URLSearchParams(window.location.search).has('admin-recovery')
   if (route.startsWith('/adm') || isAdminRecovery) return <AdminApp />
-  const page = route === '/relatar' ? <ReportPage /> : route === '/recursos' ? <Resources /> : route === '/faq' ? <Faq /> : <Home />
+  const page = route === '/relatar' ? <ReportPage /> : route === '/recursos' ? <Resources /> : route === '/faq' ? <Faq /> : route === '/termos' ? <TermsPage /> : route === '/privacidade' ? <PrivacyPage /> : <Home />
   return (
     <div className={theme === 'dark' ? 'site-theme-dark' : 'site-theme-light'}>
       <Nav
