@@ -45,10 +45,13 @@ const typeLabels = {
   conflito: "Conflito",
   sugestao: "Ideia para a escola",
 };
-const statusLabels = {
+const editableStatusLabels = {
   pendente: "Pendente",
   investigando: "Em investigação",
   resolvido: "Resolvido",
+};
+const statusLabels = {
+  ...editableStatusLabels,
   fechado: "Fechado",
 };
 const severityLabels = {
@@ -712,7 +715,7 @@ function ReportsView({ isAdmin }) {
             <SelectFilter
               label="Status"
               value={filters.status}
-              options={statusLabels}
+              options={editableStatusLabels}
               onChange={(value) => {
                 setPage(1);
                 setFilters((current) => ({ ...current, status: value }));
@@ -1027,7 +1030,7 @@ function ReportDrawer({ id, onClose, onUpdated, canDelete }) {
                   disabled={saving}
                   onChange={(event) => update("status", event.target.value)}
                 >
-                  {Object.entries(statusLabels).map(([value, label]) => (
+                  {Object.entries(editableStatusLabels).map(([value, label]) => (
                     <option key={value} value={value}>
                       {label}
                     </option>

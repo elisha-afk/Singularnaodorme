@@ -104,7 +104,7 @@ Deno.serve(async (req) => {
       const body = await req.json()
       if (!body.id) return jsonResponse({ error: 'Relato não informado' }, 400)
       const changes: Record<string, unknown> = { data_atualizacao: new Date().toISOString() }
-      if (['pendente', 'investigando', 'resolvido', 'fechado'].includes(body.status)) changes.status = body.status
+      if (['pendente', 'investigando', 'resolvido'].includes(body.status)) changes.status = body.status
       if (['low', 'normal', 'high', 'urgent'].includes(body.priority)) changes.priority = body.priority
       if (body.assigned_to === null) changes.assigned_to = null
       if (typeof body.assigned_to === 'string') {
