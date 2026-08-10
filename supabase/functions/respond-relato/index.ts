@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
         from: resendFrom,
         to: [report.email],
         subject,
-        html: `<div style="font-family:Arial,sans-serif;max-width:640px;margin:auto;color:#172554"><h1 style="color:#2457e6">SingularNãoDorme</h1><p>${greeting}</p><p>${escapeHtml(message).replace(/\n/g, '<br>')}</p><p style="margin-top:28px;color:#526078">Código do relato: <strong>${escapeHtml(report.tracking_code)}</strong></p><p>Coordenação · ${escapeHtml(profile.school || 'Equipe escolar')}</p></div>`,
+        html: `<div style="font-family:Arial,sans-serif;max-width:640px;margin:auto;color:#172554"><div style="margin-bottom:24px"><img src="https://singularnaodorme.com.br/singular-nao-dorme-logo.png" width="64" height="67" alt="SingularNãoDorme" style="display:block;border:0;object-fit:contain"><h1 style="margin:8px 0 0;color:#2457e6">SingularNãoDorme</h1></div><p>${greeting}</p><p>${escapeHtml(message).replace(/\n/g, '<br>')}</p><p style="margin-top:28px;color:#526078">Código do relato: <strong>${escapeHtml(report.tracking_code)}</strong></p><p>Coordenação · ${escapeHtml(profile.school || 'Equipe escolar')}</p></div>`,
       }),
     })
     const resendData = await resendResponse.json().catch(() => ({}))
