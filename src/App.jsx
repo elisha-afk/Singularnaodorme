@@ -64,21 +64,21 @@ function Nav({ theme, onToggleTheme }) {
         <button className="menu-toggle" type="button" onClick={() => setOpen(value => !value)} aria-expanded={open} aria-label="Abrir menu">
           {open ? <X /> : <Menu />}
         </button>
-        <button
-          className="theme-toggle"
-          type="button"
-          onClick={onToggleTheme}
-          aria-label={theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'}
-          title={theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'}
-        >
-          {theme === 'dark' ? <Sun /> : <Moon />}
-          <span>{theme === 'dark' ? 'Claro' : 'Escuro'}</span>
-        </button>
-        <nav className={open ? 'nav-links is-open' : 'nav-links'}>
-          <a href="#/" onClick={closeMenu}>Home</a>
-          <a href="#/relatar" onClick={closeMenu}>Denunciar</a>
-          <a href="#/recursos" onClick={closeMenu}>Recursos</a>
-          <a href="#/faq" onClick={closeMenu}>FAQ</a>
+        <nav className={open ? 'nav-links is-open' : 'nav-links'} aria-label="Navegação principal">
+          <a href="#/" onClick={closeMenu}>Início</a>
+          <a href="#/recursos" onClick={closeMenu}>Buscar apoio</a>
+          <a href="#/faq" onClick={closeMenu}>Dúvidas</a>
+          <button
+            className="theme-toggle"
+            type="button"
+            onClick={onToggleTheme}
+            aria-label={theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'}
+            title={theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'}
+          >
+            {theme === 'dark' ? <Sun /> : <Moon />}
+            <span>{theme === 'dark' ? 'Claro' : 'Escuro'}</span>
+          </button>
+          <a className="nav-button" href="#/relatar" onClick={closeMenu}>Fazer relato</a>
         </nav>
       </div>
     </header>
@@ -86,74 +86,86 @@ function Nav({ theme, onToggleTheme }) {
 }
 
 function Home() {
-  const cards = [
-    { icon: Lock, color: 'blue', title: '100% Seguro', text: 'Seus dados são protegidos. Você decide se quer permanecer anônimo.' },
-    { icon: UserRoundCheck, color: 'green', title: 'Anonimato Total', text: 'Denuncie sem medo de represálias e acompanhe pelo seu código.' },
-    { icon: HandHeart, color: 'purple', title: 'Apoio Real', text: 'Informação e caminhos de apoio para você não enfrentar isso sozinho.' },
-    { icon: CheckCircle2, color: 'red', title: 'Ação Rápida', text: 'Relatos organizados para que a equipe responsável possa agir.' },
+  const quickSteps = [
+    ['Conte a situação', 'Use suas próprias palavras.'],
+    ['Escolha sua privacidade', 'Relato anônimo ou identificado.'],
+    ['Receba seu código', 'Um código de acompanhamento é gerado ao finalizar.'],
+  ]
+  const steps = [
+    ['01', 'Escolha o tipo de relato', 'Informe se deseja permanecer anônimo e selecione o tipo de situação.'],
+    ['02', 'Explique o ocorrido', 'Conte o que aconteceu, onde ocorreu e quem precisa de apoio.'],
+    ['03', 'Finalize com segurança', 'Revise as informações e receba seu código de acompanhamento.'],
   ]
 
   return (
     <main>
-      <section className="hero">
-        <div className="container hero-content">
-          <h1><HandHeart aria-hidden="true" />Sua Voz é Segura Aqui</h1>
-          <p>Uma plataforma segura, anônima e confidencial para relatar bullying e conflitos escolares.</p>
-          <div className="hero-actions">
-            <a className="button button-success" href="#/relatar"><MessageCircleWarning />Fazer uma Denúncia</a>
-            <a className="button button-light" href="#/recursos"><Heart />Recursos de Apoio</a>
+      <section className="hero" id="inicio">
+        <div className="hero-content">
+          <img className="hero-logo" src="/singular-nao-dorme-logo.png" alt="Logo do projeto SingularNãoDorme" />
+          <span className="eyebrow">● Canal de apoio estudantil</span>
+          <h1>Sua voz importa.<br /><span>Você merece ser ouvido.</span></h1>
+          <p className="hero-description">Um espaço seguro e acolhedor para relatar bullying, conflitos, discriminação ou enviar sugestões. Você decide se deseja se identificar.</p>
+          <div className="actions">
+            <a className="button button-primary" href="#/relatar">Fazer um relato seguro <ArrowRight /></a>
+            <a className="button button-secondary" href="#/recursos">Preciso de apoio agora</a>
           </div>
+          <p className="privacy-line"><Lock />Relato anônimo disponível. Compartilhe somente o que desejar.</p>
         </div>
-      </section>
-
-      <section className="section section-muted">
-        <div className="container">
-          <h2 className="section-title">Por que usar o SingularNãoDorme?</h2>
-          <div className="feature-grid">
-            {cards.map(({ icon: Icon, color, title, text }) => (
-              <article className="feature-card" key={title}>
-                <Icon className={`feature-icon ${color}`} aria-hidden="true" />
-                <h3>{title}</h3>
-                <p>{text}</p>
-              </article>
+        <aside className="hero-panel">
+          <div className="panel-header">
+            <span className="panel-icon"><MessageCircleWarning /></span>
+            <div><h2>Falar é um ato de coragem</h2><p>Um caminho simples, respeitoso e seguro.</p></div>
+          </div>
+          <div className="quick-options">
+            {quickSteps.map(([title, text], index) => (
+              <div className="quick-option" key={title}>
+                <span className="quick-number">{index + 1}</span>
+                <div><strong>{title}</strong><small>{text}</small></div>
+              </div>
             ))}
           </div>
+        </aside>
+      </section>
+
+      <section className="section" id="como-funciona">
+        <div className="section-heading">
+          <span className="eyebrow">Como funciona</span>
+          <h2>Você encontra tudo com facilidade</h2>
+          <p>O formulário foi organizado em etapas simples para que você saiba exatamente o que preencher.</p>
+        </div>
+        <div className="steps">
+          {steps.map(([number, title, text]) => (
+            <article className="step" key={number}>
+              <span className="step-number">{number}</span>
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </article>
+          ))}
         </div>
       </section>
 
-      <section className="section">
-        <div className="container two-column">
-          <div>
-            <h2>O que é bullying?</h2>
-            <p>Bullying é uma agressão intencional e repetida, física, verbal, psicológica ou virtual, contra alguém em condição de vulnerabilidade.</p>
-            <ul className="check-list">
-              <li><CheckCircle2 /> <span><strong>Agressão verbal:</strong> xingamentos, ameaças e fofocas.</span></li>
-              <li><CheckCircle2 /> <span><strong>Agressão física:</strong> empurrões, socos e chutes.</span></li>
-              <li><CheckCircle2 /> <span><strong>Exclusão:</strong> isolamento ou deixar alguém de fora.</span></li>
-              <li><CheckCircle2 /> <span><strong>Cyberbullying:</strong> agressões em redes sociais.</span></li>
-            </ul>
-          </div>
-          <img className="support-image" src={studentsSupportImage} alt="Estudantes realizando uma atividade escolar" />
+      <section className="section support-section">
+        <div className="section-heading">
+          <span className="eyebrow">Rede de apoio</span>
+          <h2>Precisa conversar agora?</h2>
+          <p>Não enfrente uma situação difícil sozinho. Procure uma pessoa adulta de confiança ou um dos canais abaixo.</p>
         </div>
-      </section>
-
-      <section className="stats-section">
-        <div className="container">
-          <h2>Realidade do bullying no Brasil</h2>
-          <div className="stats-grid">
-            <div><strong>37%</strong><span>dos estudantes sofreram bullying</span></div>
-            <div><strong>62%</strong><span>testemunharam cenas de bullying</span></div>
-            <div><strong>15%</strong><span>reportam ter praticado bullying</span></div>
-          </div>
-          <p className="source">Pesquisa PeNSE - Instituto Brasileiro de Geografia e Estatística</p>
-        </div>
-      </section>
-
-      <section className="section section-muted cta-section">
-        <div className="container">
-          <h2>Você sofre com bullying?</h2>
-          <p>Não fique sozinho. Faça sua denúncia de forma segura e anônima.</p>
-          <a className="button button-success button-large" href="#/relatar"><Send />Denunciar agora</a>
+        <div className="support-cards">
+          <article className="support-card">
+            <span className="support-card-icon"><BookOpen /></span>
+            <h3>Equipe escolar</h3>
+            <p>Converse com a orientação, coordenação, direção ou um professor em quem você confia.</p>
+          </article>
+          <article className="support-card">
+            <span className="support-card-icon"><Heart /></span>
+            <h3>Apoio emocional</h3>
+            <p>O CVV oferece apoio gratuito, sigiloso e disponível 24 horas. Ligue para <a href="tel:188">188</a>.</p>
+          </article>
+          <article className="support-card emergency">
+            <span className="support-card-icon"><AlertTriangle /></span>
+            <h3>Perigo imediato</h3>
+            <p>Procure um adulto responsável. Em uma emergência, ligue para <a href="tel:190">190</a>.</p>
+          </article>
         </div>
       </section>
     </main>
@@ -349,7 +361,7 @@ function LegalPage({ title, updated, children }) {
 }
 
 function Footer() {
-  return <footer><div className="container footer-grid"><div><h2>Precisa de ajuda imediata?</h2><p>CVV: <strong>188</strong> · Emergência: <strong>190</strong> · Direitos Humanos: <strong>100</strong></p></div><p>© 2026 SingularNãoDorme. Sua voz segura contra o bullying.</p></div></footer>
+  return <footer className="site-footer"><div className="footer-brand"><img className="footer-logo" src="/singular-nao-dorme-logo.png" alt="" /><strong>SingularNãoDorme</strong></div><p>Respeito, acolhimento e proteção para a comunidade escolar.</p><p>CVV: <strong>188</strong> · Emergência: <strong>190</strong> · Direitos Humanos: <strong>100</strong></p><small>© 2026 SingularNãoDorme</small></footer>
 }
 
 export default function App() {
