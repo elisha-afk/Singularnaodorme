@@ -68,9 +68,15 @@ const priorityLabels = {
 };
 const roleLabels = {
   admin: "Administrador",
-  coordinator: "Coordenação",
-  orientacao: "Orientação",
+  staff: "Equipe",
 };
+const yearLabels = { 1: "1º ano", 2: "2º ano", 3: "3º ano" };
+const yearOptions = ["1", "2", "3"];
+const accessLabel = (user) =>
+  user.role === "admin"
+    ? "Todos os anos"
+    : (user.allowed_years || []).map((year) => yearLabels[year]).join(", ") ||
+      "Nenhum ano";
 const destinationLabels = {
   coordenacao: "Coordenação",
   orientacao: "Orientação",
@@ -572,7 +578,7 @@ function AdminDashboard({ profile }) {
             <Menu />
           </button>
           <div>
-            <span>{profile.role === "orientacao" ? "Painel da orientação" : "Painel da coordenação"}</span>
+            <span>Painel administrativo</span>
             <strong>{profile.school || "Todas as unidades"}</strong>
           </div>
           <button
@@ -613,6 +619,7 @@ function ReportsView({ isAdmin }) {
     priority: "",
     anonimo: "",
     destino: "",
+    ano: "",
   });
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState(null);
@@ -750,17 +757,24 @@ function ReportsView({ isAdmin }) {
                 setFilters((current) => ({ ...current, priority: value }));
               }}
             />
-            {isAdmin && (
-              <SelectFilter
-                label="Destino"
-                value={filters.destino}
-                options={destinationLabels}
-                onChange={(value) => {
-                  setPage(1);
-                  setFilters((current) => ({ ...current, destino: value }));
-                }}
-              />
-            )}
+            <SelectFilter
+              label="Destino"
+              value={filters.destino}
+              options={destinationLabels}
+              onChange={(value) => {
+                setPage(1);
+                setFilters((current) => ({ ...current, destino: value }));
+              }}
+            />
+            <SelectFilter
+              label="Ano"
+              value={filters.ano}
+              options={yearLabels}
+              onChange={(value) => {
+                setPage(1);
+                setFilters((current) => ({ ...current, ano: value }));
+              }}
+            />
             <select
               aria-label="Identificação"
               value={filters.anonimo}
@@ -798,6 +812,7 @@ function ReportsView({ isAdmin }) {
                     <th>Relato</th>
                     <th>Categoria</th>
                     <th>Destino</th>
+                    <th>Ano</th>
                     <th>Status</th>
                     <th>Gravidade</th>
                     <th>Prioridade</th>
@@ -815,7 +830,7 @@ function ReportsView({ isAdmin }) {
                   ))}
                   {reports.length === 0 && (
                     <tr>
-                      <td colSpan="8">
+                      <td colSpan="9">
                         <div className="admin-empty">
                           <Search />
                           <strong>Nenhum relato encontrado</strong>
@@ -907,6 +922,7 @@ function ReportRow({ report, onOpen }) {
         </span>
       </td>
       <td>{destinationLabels[report.destino] || report.destino}</td>
+      <td>{yearLabels[report.ano] || "Sem ano"}</td>
       <td>
         <span className={`admin-status ${report.status}`}>
           {statusLabels[report.status] || report.status}
@@ -1183,6 +1199,7 @@ function ReportDetails({ report }) {
       />
       <Detail label="Gravidade" value={severityLabels[report.severidade]} />
       <Detail label="Equipe responsável" value={destinationLabels[report.destino] || report.destino} />
+      <Detail label="Ano" value={yearLabels[report.ano] || "Não informado"} />
       <Detail
         label="Identificação"
         value={report.anonimo ? "Relato anônimo" : report.nome}
@@ -1509,6 +1526,7 @@ function UsersView({ currentUser }) {
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [resetUser, setResetUser] = useState(null);
+  const [accessUser, setAccessUser] = useState(null);
   const [message, setMessage] = useState("");
 
   async function load() {
@@ -1574,6 +1592,10 @@ function UsersView({ currentUser }) {
                 </strong>
               </div>
               <div>
+                <span>Acesso</span>
+                <strong>{accessLabel(user)}</strong>
+              </div>
+              <div>
                 <span>Unidade</span>
                 <strong>{user.school || "Todas"}</strong>
               </div>
@@ -1581,6 +1603,14 @@ function UsersView({ currentUser }) {
                 {user.active ? "Ativo" : "Desativado"}
               </span>
               <div className="admin-user-actions">
+                {user.role === "staff" && (
+                  <button
+                    className="admin-secondary-button"
+                    onClick={() => setAccessUser(user)}
+                  >
+                    Permissões
+                  </button>
+                )}
                 <button
                   className="admin-secondary-button"
                   onClick={() => setResetUser(user)}
@@ -1605,6 +1635,16 @@ function UsersView({ currentUser }) {
           onClose={() => setShowCreate(false)}
           onCreated={() => {
             setShowCreate(false);
+            load();
+          }}
+        />
+      )}
+      {accessUser && (
+        <EditAccessModal
+          user={accessUser}
+          onClose={() => setAccessUser(null)}
+          onUpdated={() => {
+            setAccessUser(null);
             load();
           }}
         />
@@ -1696,12 +1736,90 @@ function ResetPasswordModal({ user, onClose, onUpdated }) {
   );
 }
 
+function YearPermissions({ value, onChange }) {
+  const toggle = (year) =>
+    onChange(
+      value.includes(year) ? value.filter((y) => y !== year) : [...value, year],
+    );
+  return (
+    <fieldset className="admin-year-permissions">
+      <legend>Anos autorizados</legend>
+      {yearOptions.map((year) => (
+        <label key={year} className="admin-checkbox">
+          <input
+            type="checkbox"
+            checked={value.includes(Number(year))}
+            onChange={() => toggle(Number(year))}
+          />
+          {yearLabels[year]}
+        </label>
+      ))}
+      <small>O usuário só vê denúncias dos anos marcados.</small>
+    </fieldset>
+  );
+}
+
+function EditAccessModal({ user, onClose, onUpdated }) {
+  const [years, setYears] = useState(user.allowed_years || []);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function save(event) {
+    event.preventDefault();
+    setLoading(true);
+    setError("");
+    try {
+      await adminApi.updateUser({ id: user.id, allowed_years: years });
+      onUpdated();
+    } catch (saveError) {
+      setError(saveError.message);
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="admin-modal-layer">
+      <button
+        className="admin-drawer-backdrop"
+        onClick={onClose}
+        aria-label="Fechar"
+      />
+      <form className="admin-modal" onSubmit={save}>
+        <header>
+          <div>
+            <span className="admin-kicker">Permissões</span>
+            <h2>Anos de {user.name}</h2>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Fechar">
+            <X />
+          </button>
+        </header>
+        <YearPermissions value={years} onChange={setYears} />
+        {error && <div className="admin-error">{error}</div>}
+        <footer>
+          <button
+            type="button"
+            className="admin-secondary-button"
+            onClick={onClose}
+          >
+            Cancelar
+          </button>
+          <button className="admin-primary-button" disabled={loading}>
+            {loading ? "Salvando..." : "Salvar permissões"}
+          </button>
+        </footer>
+      </form>
+    </div>
+  );
+}
+
 function CreateUserModal({ onClose, onCreated }) {
   const [form, setForm] = useState({
     name: "",
     email: "",
     school: "",
-    role: "coordinator",
+    role: "staff",
+    allowed_years: [],
     password: "",
   });
   const [error, setError] = useState("");
@@ -1763,8 +1881,7 @@ function CreateUserModal({ onClose, onCreated }) {
               value={form.role}
               onChange={(event) => update("role", event.target.value)}
             >
-              <option value="coordinator">Coordenação</option>
-              <option value="orientacao">Orientação</option>
+              <option value="staff">Equipe</option>
               <option value="admin">Administrador</option>
             </select>
           </label>
@@ -1777,6 +1894,12 @@ function CreateUserModal({ onClose, onCreated }) {
             />
           </label>
         </div>
+        {form.role === "staff" && (
+          <YearPermissions
+            value={form.allowed_years}
+            onChange={(years) => update("allowed_years", years)}
+          />
+        )}
         <label>
           Senha temporária
           <input

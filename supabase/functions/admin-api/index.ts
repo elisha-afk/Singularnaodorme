@@ -1,6 +1,6 @@
-import { audit, corsHeaders, jsonResponse, requireStaff } from '../_shared/admin.ts'
+import { allowedYears, audit, corsHeaders, jsonResponse, requireStaff } from '../_shared/admin.ts'
 
-const reportFields = 'id,tracking_code,tipo,descricao,local,data_incidente,envolvidos,testemunhas,severidade,anonimo,nome,email,telefone,escola,destino,status,resposta,data_criacao,data_atualizacao,priority,assigned_to'
+const reportFields = 'id,tracking_code,tipo,descricao,local,data_incidente,envolvidos,testemunhas,severidade,anonimo,nome,email,telefone,escola,destino,ano,status,resposta,data_criacao,data_atualizacao,priority,assigned_to'
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
@@ -9,12 +9,12 @@ Deno.serve(async (req) => {
     const { supabase, user, profile } = await requireStaff(req)
     const url = new URL(req.url)
     const action = url.searchParams.get('action') || 'dashboard'
-    const allowedDestination = profile.role === 'admin' ? null : profile.role === 'orientacao' ? 'orientacao' : 'coordenacao'
+    const years = allowedYears(profile)
 
     if (req.method === 'GET' && action === 'me') return jsonResponse({ profile, email: user.email })
 
     if (req.method === 'GET' && action === 'staff') {
-      const { data, error } = await supabase.from('admin_profiles').select('id,name,role,school').eq('active', true).order('name')
+      const { data, error } = await supabase.from('admin_profiles').select('id,name,role,school,allowed_years').eq('active', true).order('name')
       if (error) throw error
       return jsonResponse({ staff: data || [] })
     }
@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
     if (req.method === 'GET' && action === 'dashboard') {
       const count = (filters: Record<string, string> = {}) => {
         let query = supabase.from('relatos').select('id', { count: 'exact', head: true })
-        if (allowedDestination) query = query.eq('destino', allowedDestination)
+        if (years) query = query.in('ano', years)
         Object.entries(filters).forEach(([key, value]) => { query = query.eq(key, value) })
         return query
       }
@@ -54,10 +54,10 @@ Deno.serve(async (req) => {
       const page = Math.max(1, Number(url.searchParams.get('page')) || 1)
       const pageSize = Math.min(50, Math.max(10, Number(url.searchParams.get('pageSize')) || 20))
       let query = supabase.from('relatos').select(reportFields, { count: 'exact' })
-      if (allowedDestination) query = query.eq('destino', allowedDestination)
+      if (years) query = query.in('ano', years)
       const requestedDestination = url.searchParams.get('destino')
-      if (!allowedDestination && ['coordenacao', 'orientacao'].includes(requestedDestination || '')) query = query.eq('destino', requestedDestination)
-      for (const field of ['tipo', 'status', 'severidade', 'priority']) {
+      if (['coordenacao', 'orientacao'].includes(requestedDestination || '')) query = query.eq('destino', requestedDestination)
+      for (const field of ['tipo', 'ano', 'status', 'severidade', 'priority']) {
         const value = url.searchParams.get(field)
         if (value) query = query.eq(field, value)
       }
@@ -75,7 +75,7 @@ Deno.serve(async (req) => {
       const id = url.searchParams.get('id')
       if (!id) return jsonResponse({ error: 'Relato não informado' }, 400)
       let reportQuery = supabase.from('relatos').select(reportFields).eq('id', id)
-      if (allowedDestination) reportQuery = reportQuery.eq('destino', allowedDestination)
+      if (years) reportQuery = reportQuery.in('ano', years)
       const [reportResult, notesResult, responsesResult] = await Promise.all([
         reportQuery.single(),
         supabase.from('relato_notes').select('id,content,created_at,author_id,admin_profiles(name)').eq('relato_id', id).order('created_at', { ascending: false }),
@@ -120,7 +120,7 @@ Deno.serve(async (req) => {
         changes.assigned_to = body.assigned_to
       }
       let updateQuery = supabase.from('relatos').update(changes).eq('id', body.id)
-      if (allowedDestination) updateQuery = updateQuery.eq('destino', allowedDestination)
+      if (years) updateQuery = updateQuery.in('ano', years)
       const { data, error } = await updateQuery.select(reportFields).single()
       if (error) throw error
       await audit(supabase, user.id, 'report.updated', 'relato', body.id, changes)
@@ -132,7 +132,7 @@ Deno.serve(async (req) => {
       const content = String(body.content || '').trim()
       if (!body.relato_id || content.length < 2 || content.length > 5000) return jsonResponse({ error: 'Observação inválida' }, 400)
       let reportAccessQuery = supabase.from('relatos').select('id').eq('id', body.relato_id)
-      if (allowedDestination) reportAccessQuery = reportAccessQuery.eq('destino', allowedDestination)
+      if (years) reportAccessQuery = reportAccessQuery.in('ano', years)
       const { data: accessibleReport } = await reportAccessQuery.maybeSingle()
       if (!accessibleReport) return jsonResponse({ error: 'Relato não encontrado' }, 404)
       const { data, error } = await supabase.from('relato_notes').insert({ relato_id: body.relato_id, author_id: user.id, content }).select('id,content,created_at,author_id').single()

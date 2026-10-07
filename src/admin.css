@@ -1423,3 +1423,17 @@
     animation-duration: 1.5s;
   }
 }
+
+.admin-year-permissions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--admin-border, #dbe3ef);
+  border-radius: 10px;
+}
+.admin-year-permissions legend { padding: 0 6px; font-weight: 600; }
+.admin-year-permissions small { flex-basis: 100%; opacity: 0.7; }
+.admin-checkbox { display: inline-flex; align-items: center; gap: 8px; flex-direction: row; }
+.admin-checkbox input { width: auto; }

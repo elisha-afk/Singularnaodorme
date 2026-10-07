@@ -11,6 +11,7 @@ interface RelatoData {
   envolvidos?: string
   testemunhas?: string
   severidade: string
+  ano: number
   anonimo: boolean
   nome?: string
   email?: string
@@ -137,6 +138,10 @@ function validateRelato(data: RelatoData) {
     errors.push('Severidade inválida')
   }
 
+  if (![1, 2, 3].includes(Number(data.ano))) {
+    errors.push('Ano inválido')
+  }
+
   if (!data.anonimo) {
     if (!data.nome || data.nome.length < 3) {
       errors.push('Nome deve ter mínimo 3 caracteres')
@@ -165,6 +170,7 @@ function sanitizeRelato(data: RelatoData) {
     envolvidos: data.envolvidos?.trim().substring(0, 1000),
     testemunhas: data.testemunhas?.trim().substring(0, 1000),
     severidade: data.severidade?.trim().toLowerCase(),
+    ano: Number(data.ano),
     anonimo: data.anonimo === true,
     nome: data.anonimo ? null : data.nome?.trim().substring(0, 255),
     email: data.anonimo ? null : data.email?.trim().toLowerCase(),

@@ -1,5 +1,7 @@
 import { audit, corsHeaders, jsonResponse, requireStaff } from '../_shared/admin.ts'
 
+const parseYears = (value: unknown) => Array.isArray(value) ? [...new Set(value.map(Number).filter((year) => [1, 2, 3].includes(year)))].sort() : []
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
@@ -21,17 +23,18 @@ Deno.serve(async (req) => {
       const email = String(body.email || '').trim().toLowerCase()
       const name = String(body.name || '').trim()
       const password = String(body.password || '')
-      const role = ['admin', 'coordinator', 'orientacao'].includes(body.role) ? body.role : 'coordinator'
+      const role = body.role === 'admin' ? 'admin' : 'staff'
+      const allowed_years = role === 'admin' ? [] : parseYears(body.allowed_years)
       if (!/^\S+@\S+\.\S+$/.test(email) || name.length < 3 || password.length < 10) return jsonResponse({ error: 'Informe nome, e-mail válido e senha temporária com ao menos 10 caracteres' }, 400)
 
       const { data: created, error: createError } = await supabase.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { name } })
       if (createError || !created.user) return jsonResponse({ error: createError?.message || 'Não foi possível criar o acesso' }, 400)
-      const { data: profile, error: profileError } = await supabase.from('admin_profiles').insert({ id: created.user.id, name, role, school: String(body.school || '').trim() || null, must_change_password: true }).select().single()
+      const { data: profile, error: profileError } = await supabase.from('admin_profiles').insert({ id: created.user.id, name, role, allowed_years, school: String(body.school || '').trim() || null, must_change_password: true }).select().single()
       if (profileError) {
         await supabase.auth.admin.deleteUser(created.user.id)
         throw profileError
       }
-      await audit(supabase, user.id, 'user.created', 'admin_profile', created.user.id, { email, role })
+      await audit(supabase, user.id, 'user.created', 'admin_profile', created.user.id, { email, role, allowed_years })
       return jsonResponse({ user: { ...profile, email } }, 201)
     }
 
@@ -41,7 +44,8 @@ Deno.serve(async (req) => {
       if (body.id === user.id && body.active === false) return jsonResponse({ error: 'Você não pode desativar seu próprio acesso' }, 400)
       const changes: Record<string, unknown> = { updated_at: new Date().toISOString() }
       if (typeof body.name === 'string' && body.name.trim().length >= 3) changes.name = body.name.trim()
-      if (['admin', 'coordinator', 'orientacao'].includes(body.role)) changes.role = body.role
+      if (['admin', 'staff'].includes(body.role)) changes.role = body.role
+      if (Array.isArray(body.allowed_years)) changes.allowed_years = parseYears(body.allowed_years)
       if (typeof body.active === 'boolean') changes.active = body.active
       if (typeof body.school === 'string') changes.school = body.school.trim() || null
       if (typeof body.password === 'string' && body.password.length >= 10) {

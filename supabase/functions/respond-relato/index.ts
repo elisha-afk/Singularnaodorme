@@ -1,4 +1,4 @@
-import { audit, corsHeaders, jsonResponse, requireStaff } from '../_shared/admin.ts'
+import { allowedYears, audit, corsHeaders, jsonResponse, requireStaff } from '../_shared/admin.ts'
 
 function escapeHtml(value: string) {
   return value.replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[character]!)
@@ -15,10 +15,10 @@ Deno.serve(async (req) => {
     const message = String(body.message || '').trim()
     if (!body.relato_id || subject.length < 3 || message.length < 2 || message.length > 10000) return jsonResponse({ error: 'Assunto ou mensagem inválidos' }, 400)
 
-    const { data: report, error: reportError } = await supabase.from('relatos').select('id,tracking_code,tipo,anonimo,email,nome,destino').eq('id', body.relato_id).single()
+    const { data: report, error: reportError } = await supabase.from('relatos').select('id,tracking_code,tipo,anonimo,email,nome,destino,ano').eq('id', body.relato_id).single()
     if (reportError || !report) return jsonResponse({ error: 'Relato não encontrado' }, 404)
-    const allowedDestination = profile.role === 'admin' ? null : profile.role === 'orientacao' ? 'orientacao' : 'coordenacao'
-    if (allowedDestination && report.destino !== allowedDestination) return jsonResponse({ error: 'Relato não encontrado' }, 404)
+    const years = allowedYears(profile)
+    if (years && !years.includes(report.ano)) return jsonResponse({ error: 'Relato não encontrado' }, 404)
     if (report.anonimo || !report.email) return jsonResponse({ error: 'Relatos anônimos não possuem endereço para resposta' }, 400)
 
     const { data: responseRecord, error: insertError } = await supabase.from('relato_responses').insert({

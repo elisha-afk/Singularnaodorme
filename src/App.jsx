@@ -16,6 +16,7 @@ const initialReport = {
   envolvidos: '',
   testemunhas: '',
   severidade: '',
+  ano: '',
   anonimo: true,
   nome: '',
   email: '',
@@ -203,6 +204,7 @@ function ReportPage() {
     const next = {}
     if (fields === 'all' || fields === 1) {
       if (!report.severidade) next.severidade = 'Selecione como você avalia a situação.'
+      if (!report.ano) next.ano = 'Selecione o ano.'
     }
     if (fields === 'all' || fields === 2) {
       if (report.descricao.trim().length < 20) next.descricao = 'Conte um pouco mais: use pelo menos 20 caracteres.'
@@ -287,6 +289,7 @@ function ReportPage() {
           {step === 1 && <section className="form-step">
             <div className="step-heading"><span>01</span><div><h2>Como podemos ajudar?</h2><p>{report.tipo === 'sugestao' ? 'Compartilhe uma ideia para melhorar os espaços, regras ou atividades da escola.' : 'Escolha o tipo de relato e como você percebe a gravidade.'}</p></div></div>
             <div className="type-tabs">{reportTypes.map(({ value, label }) => <button key={value} type="button" className={report.tipo === value ? 'active' : ''} onClick={() => selectType(value)}>{label}</button>)}</div>
+            <FormField field="ano" label={report.tipo === 'sugestao' ? 'Para qual ano é a ideia?' : 'Em qual ano está o estudante envolvido?'} error={errors.ano}><select value={report.ano} onChange={event => update('ano', event.target.value)}><option value="">Escolha o ano</option><option value="1">1º ano</option><option value="2">2º ano</option><option value="3">3º ano</option></select></FormField>
             <FormField field="severidade" label={report.tipo === 'sugestao' ? 'Qual impacto essa ideia pode ter?' : 'Como você avalia essa situação?'} error={errors.severidade}><select value={report.severidade} onChange={event => update('severidade', event.target.value)}>{report.tipo === 'sugestao' ? <><option value="">Escolha uma opção</option><option value="leve">Pequeno — melhora um detalhe</option><option value="moderado">Médio — ajuda uma turma ou espaço</option><option value="grave">Alto — ajuda muitas pessoas</option><option value="critico">Urgente — resolve um risco ou problema sério</option></> : <><option value="">Escolha uma opção</option><option value="leve">Leve — me incomodou</option><option value="moderado">Moderada — está se repetindo</option><option value="grave">Grave — causou medo ou dano</option><option value="critico">Crítica — existe risco imediato</option></>}</select></FormField>
           </section>}
 

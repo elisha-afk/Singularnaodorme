@@ -42,6 +42,11 @@ export async function requireStaff(req: Request, adminOnly = false) {
   return { supabase, user, profile }
 }
 
+// Years a staff member may see; null means unrestricted (admin).
+export function allowedYears(profile: { role: string, allowed_years?: number[] | null }): number[] | null {
+  return profile.role === 'admin' ? null : (profile.allowed_years || [])
+}
+
 export async function audit(supabase: ReturnType<typeof serviceClient>, actorId: string, action: string, entityType: string, entityId?: string, metadata: Record<string, unknown> = {}) {
   const { error } = await supabase.from('audit_logs').insert({
     actor_id: actorId,
