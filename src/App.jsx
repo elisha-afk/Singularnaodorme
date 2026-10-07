@@ -8,6 +8,9 @@ import { findReport, submitReport } from './supabase.js'
 import studentsSupportImage from './assets/students-support.jpg'
 import AdminApp from './Admin.jsx'
 
+// Data de hoje (AAAA-MM-DD) no horário de Brasília.
+const todayInBrasilia = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' })
+
 const initialReport = {
   tipo: 'bullying',
   descricao: '',
@@ -194,7 +197,7 @@ function ReportPage() {
       ...current,
       tipo: type,
       data_incidente: type === 'sugestao' && !current.data_incidente
-        ? new Date().toISOString().slice(0, 10)
+        ? todayInBrasilia()
         : current.data_incidente,
     }))
     setErrors({})
@@ -210,7 +213,7 @@ function ReportPage() {
       if (report.descricao.trim().length < 20) next.descricao = 'Conte um pouco mais: use pelo menos 20 caracteres.'
       if (!report.local.trim()) next.local = 'Indique onde aconteceu.'
       if (!report.data_incidente) next.data_incidente = 'Indique quando aconteceu.'
-      if (report.data_incidente > new Date().toISOString().slice(0, 10)) next.data_incidente = 'A data não pode estar no futuro.'
+      if (report.data_incidente > todayInBrasilia()) next.data_incidente = 'A data não pode estar no futuro.'
     }
     if (fields === 'all' || fields === 3) {
       if (!report.anonimo) {
@@ -296,7 +299,7 @@ function ReportPage() {
           {step === 2 && <section className="form-step">
             <div className="step-heading"><span>02</span><div><h2>{report.tipo === 'sugestao' ? 'Conte a sua ideia' : 'Conte o que aconteceu'}</h2><p>{report.tipo === 'sugestao' ? 'Explique o que poderia mudar e como isso ajudaria os estudantes.' : 'Escreva do seu jeito. Você pode incluir apenas o que se sentir confortável.'}</p></div></div>
             <FormField field="descricao" label={report.tipo === 'sugestao' ? 'O que você gostaria de melhorar?' : 'O que aconteceu?'} error={errors.descricao}><textarea value={report.descricao} onChange={event => update('descricao', event.target.value)} placeholder={report.tipo === 'sugestao' ? 'Por exemplo: criar uma área de leitura no pátio, mudar uma regra ou propor uma nova atividade.' : 'Conte com suas palavras. Por exemplo: o que fizeram, quantas vezes aconteceu e como você se sentiu.'} /><span className="character-count">{report.descricao.length}/20 caracteres mínimos</span></FormField>
-            {report.tipo === 'sugestao' ? <FormField field="local" label="Sobre o que é a sua ideia?" error={errors.local}><select value={report.local} onChange={event => update('local', event.target.value)}><option value="">Escolha uma categoria</option><option value="Espaço físico da escola">Espaço físico da escola</option><option value="Regra da escola">Regra da escola</option><option value="Convivência entre estudantes">Convivência entre estudantes</option><option value="Atividade ou projeto">Atividade ou projeto</option><option value="Outro assunto">Outro assunto</option></select></FormField> : <div className="form-grid"><FormField field="local" label="Onde aconteceu?" error={errors.local}><input value={report.local} onChange={event => update('local', event.target.value)} placeholder="Sala, pátio, corredor ou internet" /></FormField><FormField field="data_incidente" label="Quando aconteceu?" error={errors.data_incidente}><input type="date" max={new Date().toISOString().slice(0, 10)} value={report.data_incidente} onChange={event => update('data_incidente', event.target.value)} /></FormField></div>}
+            {report.tipo === 'sugestao' ? <FormField field="local" label="Sobre o que é a sua ideia?" error={errors.local}><select value={report.local} onChange={event => update('local', event.target.value)}><option value="">Escolha uma categoria</option><option value="Espaço físico da escola">Espaço físico da escola</option><option value="Regra da escola">Regra da escola</option><option value="Convivência entre estudantes">Convivência entre estudantes</option><option value="Atividade ou projeto">Atividade ou projeto</option><option value="Outro assunto">Outro assunto</option></select></FormField> : <div className="form-grid"><FormField field="local" label="Onde aconteceu?" error={errors.local}><input value={report.local} onChange={event => update('local', event.target.value)} placeholder="Sala, pátio, corredor ou internet" /></FormField><FormField field="data_incidente" label="Quando aconteceu?" error={errors.data_incidente}><input type="date" max={todayInBrasilia()} value={report.data_incidente} onChange={event => update('data_incidente', event.target.value)} /></FormField></div>}
             <FormField label={report.tipo === 'sugestao' ? 'Quem seria beneficiado? (opcional)' : 'Quem estava envolvido? (opcional)'}><textarea value={report.envolvidos} onChange={event => update('envolvidos', event.target.value)} placeholder={report.tipo === 'sugestao' ? 'Uma turma, todos os estudantes, professores ou a comunidade escolar.' : 'Não precisa informar nomes completos.'} /></FormField>
             <FormField label={report.tipo === 'sugestao' ? 'Quer acrescentar algum exemplo? (opcional)' : 'Alguém viu? (opcional)'}><textarea value={report.testemunhas} onChange={event => update('testemunhas', event.target.value)} placeholder={report.tipo === 'sugestao' ? 'Conte como essa ideia poderia funcionar na prática.' : 'Colegas, professores ou outras pessoas.'} /></FormField>
           </section>}
@@ -318,7 +321,7 @@ function ReportPage() {
           {status === 'error' && <p className="notice error">{result.error}</p>}
         </form>
         {status === 'success' && <section className="notice success"><CheckCircle2 /><div><h2>{result.submittedType === 'sugestao' ? 'Ideia enviada' : 'Denúncia enviada'}</h2><p>Guarde o seu código de rastreamento:</p><strong>{result.trackingCode}</strong>{result.wasAnonymous && <div className="anonymous-code-warning" role="alert"><AlertTriangle /><p><strong>Atenção:</strong> se você perder este código, não será possível acessar novamente este relato. Será necessário enviar um novo relato sobre o mesmo assunto.</p></div>}<button type="button" className="text-button" onClick={() => setStatus('idle')}>{result.submittedType === 'sugestao' ? 'Enviar outra ideia' : 'Enviar outro relato'}</button></div></section>}
-        <section className="tracking-card"><h2><Search />Rastrear sua denúncia</h2><p>Digite o código recebido ao enviar seu relato.</p><form onSubmit={search}><input value={trackingCode} onChange={event => setTrackingCode(event.target.value)} placeholder="Código de rastreamento" /><button className="button button-primary">Buscar</button></form>{tracking.state === 'loading' && <p>Buscando...</p>}{tracking.state === 'error' && <p className="notice error">{tracking.message}</p>}{tracking.state === 'success' && <div className="notice"><p><strong>Status:</strong> {statusLabels[tracking.data.status] || tracking.data.status}</p><p><strong>Tipo:</strong> {tracking.data.tipo}</p><p><strong>Data:</strong> {new Date(tracking.data.data_criacao).toLocaleDateString('pt-BR')}</p></div>}</section>
+        <section className="tracking-card"><h2><Search />Rastrear sua denúncia</h2><p>Digite o código recebido ao enviar seu relato.</p><form onSubmit={search}><input value={trackingCode} onChange={event => setTrackingCode(event.target.value)} placeholder="Código de rastreamento" /><button className="button button-primary">Buscar</button></form>{tracking.state === 'loading' && <p>Buscando...</p>}{tracking.state === 'error' && <p className="notice error">{tracking.message}</p>}{tracking.state === 'success' && <div className="notice"><p><strong>Status:</strong> {statusLabels[tracking.data.status] || tracking.data.status}</p><p><strong>Tipo:</strong> {tracking.data.tipo}</p><p><strong>Data:</strong> {new Date(tracking.data.data_criacao).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</p></div>}</section>
       </div>
     </main>
   )

@@ -82,14 +82,16 @@ const destinationLabels = {
   orientacao: "Orientação",
 };
 
+// Sempre no horário oficial de Brasília, independente do fuso do computador.
 function formatDate(value, includeTime = false) {
   if (!value) return "Não informado";
-  return new Intl.DateTimeFormat(
-    "pt-BR",
-    includeTime
-      ? { dateStyle: "short", timeStyle: "short" }
-      : { dateStyle: "short" },
-  ).format(new Date(value));
+  // Datas sem hora (ex.: data do incidente) não sofrem conversão de fuso.
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(value);
+  return new Intl.DateTimeFormat("pt-BR", {
+    dateStyle: "short",
+    ...(includeTime && !dateOnly ? { timeStyle: "short" } : {}),
+    timeZone: dateOnly ? "UTC" : "America/Sao_Paulo",
+  }).format(new Date(value));
 }
 
 export default function AdminApp() {
