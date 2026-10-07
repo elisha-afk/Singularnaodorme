@@ -1501,3 +1501,68 @@
 @media (max-width: 520px) {
   .admin-suspect-banner { grid-template-columns: 1fr; }
 }
+
+.admin-threat-alert {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: calc(100% - 48px);
+  margin: 14px 24px 0;
+  padding: 12px 16px;
+  border: 1px solid #dc2626;
+  border-radius: 8px;
+  color: #991b1b;
+  background: #fef2f2;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.admin-threat-alert strong { flex: 1; }
+.admin-threat-alert span { font-weight: 800; text-decoration: underline; }
+.admin-queue-tabs button span.threat { background: #dc2626; }
+.admin-queue-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-left: 8px; }
+.admin-queue-chips button {
+  padding: 6px 12px;
+  border: 1px solid #d9e0ee;
+  border-radius: 999px;
+  color: #526078;
+  background: transparent;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.admin-queue-chips button.active { border-color: #2457e6; color: #2457e6; }
+.admin-suspect-badge.threat { color: #991b1b; background: #fee2e2; }
+.admin-suspect-banner.threat { border-color: #dc2626; color: #991b1b; background: #fef2f2; }
+.admin-suspect-actions { display: grid; gap: 8px; }
+.admin-origin-note { font-style: italic; opacity: 0.85; }
+.admin-block-row {
+  display: grid;
+  grid-template-columns: auto repeat(4, minmax(0, 1fr)) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-bottom: 1px solid #e8edf6;
+}
+.admin-block-row > div > span { display: block; font-size: 0.75rem; opacity: 0.7; }
+.admin-block-row small { display: block; opacity: 0.7; }
+.admin-block-status {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+.admin-block-status.active { color: #92400e; background: #fef3c7; }
+.admin-block-status.danger { color: #991b1b; background: #fee2e2; }
+.admin-block-status.off { color: #475569; background: #e2e8f0; }
+.admin-shell.theme-dark .admin-threat-alert { border-color: #ef4444; color: #fecaca; background: #3b1212; }
+.admin-shell.theme-dark .admin-suspect-badge.threat { color: #fecaca; background: #4a1818; }
+.admin-shell.theme-dark .admin-suspect-banner.threat { border-color: #ef4444; color: #fecaca; background: #3b1212; }
+.admin-shell.theme-dark .admin-queue-chips button { border-color: #334155; color: #94a3b8; }
+.admin-shell.theme-dark .admin-queue-chips button.active { border-color: #6f8cff; color: #9db1ff; }
+.admin-shell.theme-dark .admin-block-row { border-color: #1f2937; }
+.admin-shell.theme-dark .admin-block-status.off { color: #cbd5e1; background: #1e293b; }
+@media (max-width: 900px) {
+  .admin-block-row { grid-template-columns: 1fr 1fr; }
+  .admin-threat-alert { width: calc(100% - 32px); margin: 12px 16px 0; }
+}

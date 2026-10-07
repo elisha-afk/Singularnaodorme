@@ -3,6 +3,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { analyzeMessage, hashOrigin, RATE_LIMIT } from '../_shared/abuse.ts'
+import { BLOCKED_MESSAGE, originState } from '../_shared/blocks.ts'
 
 interface RelatoData {
   tipo: string
@@ -64,6 +65,16 @@ Deno.serve(async (req) => {
     // Limite de envios por origem: guarda apenas um hash com sal, nunca o IP
     const ip = (req.headers.get('cf-connecting-ip') || req.headers.get('x-forwarded-for') || 'desconhecido').split(',')[0].trim()
     const originHash = await hashOrigin(ip, Deno.env.get('ABUSE_SALT') || supabaseKey)
+
+    // Origem bloqueada por uso indevido: não envia
+    const state = await originState(supabase, originHash)
+    if (state.blocked) {
+      return new Response(
+        JSON.stringify({ error: BLOCKED_MESSAGE, blocked: true }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     const windowStart = new Date(Date.now() - RATE_LIMIT.windowMinutes * 60 * 1000).toISOString()
     const { count: recentAttempts } = await supabase
       .from('submission_attempts')
@@ -77,8 +88,8 @@ Deno.serve(async (req) => {
       )
     }
     await supabase.from('submission_attempts').insert({ origin_hash: originHash })
-    // Os registros do limite não precisam durar: apaga o que tem mais de 24h
-    await supabase.from('submission_attempts').delete().lt('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+    // Retenção: apaga hashes com mais de 24h e registros de bloqueio vencidos
+    await supabase.rpc('purge_origin_data')
 
     // Filtro de palavras: apenas marca como suspeita, a denúncia é salva do mesmo jeito
     const verdict = analyzeMessage(sanitizedData.descricao, sanitizedData.envolvidos, sanitizedData.testemunhas)
@@ -92,7 +103,13 @@ Deno.serve(async (req) => {
       .insert({
         ...sanitizedData,
         suspeito: verdict.suspect,
+        suspeito_tipo: verdict.kind,
         motivo_suspeita: verdict.reason,
+        // O hash da origem só fica guardado em mensagens suspeitas (24h), para permitir o bloqueio
+        origem_hash: verdict.suspect ? originHash : null,
+        origem_registrada_em: verdict.suspect ? new Date().toISOString() : null,
+        // Ameaças entram como urgentes
+        ...(verdict.kind === 'ameaca' ? { priority: 'urgent' } : {}),
         tracking_code: trackingCode,
         status: 'pendente',
         data_criacao: new Date().toISOString(),

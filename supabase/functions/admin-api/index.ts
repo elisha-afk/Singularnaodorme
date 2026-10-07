@@ -1,6 +1,7 @@
 import { allowedYears, audit, corsHeaders, jsonResponse, requireStaff } from '../_shared/admin.ts'
+import { BLOCK_DAYS, originState } from '../_shared/blocks.ts'
 
-const reportFields = 'id,tracking_code,tipo,descricao,local,data_incidente,envolvidos,testemunhas,severidade,anonimo,nome,email,telefone,escola,destino,ano,suspeito,motivo_suspeita,status,resposta,data_criacao,data_atualizacao,priority,assigned_to'
+const reportFields = 'id,tracking_code,tipo,descricao,local,data_incidente,envolvidos,testemunhas,severidade,anonimo,nome,email,telefone,escola,destino,ano,suspeito,suspeito_tipo,motivo_suspeita,status,resposta,data_criacao,data_atualizacao,priority,assigned_to'
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
@@ -44,12 +45,17 @@ Deno.serve(async (req) => {
         Object.entries(filters).forEach(([key, value]) => { query = query.eq(key, value) })
         return query
       }
-      let suspiciousQuery = supabase.from('relatos').select('id', { count: 'exact', head: true }).eq('suspeito', true)
-      if (years) suspiciousQuery = suspiciousQuery.in('ano', years)
-      const [total, pending, investigating, urgent, identified, suspicious] = await Promise.all([
-        count(), count({ status: 'pendente' }), count({ status: 'investigando' }), count({ priority: 'urgent' }), count({ anonimo: 'false' }), suspiciousQuery,
+      const suspectCount = (kind?: string) => {
+        let query = supabase.from('relatos').select('id', { count: 'exact', head: true }).eq('suspeito', true)
+        if (kind) query = query.eq('suspeito_tipo', kind)
+        if (years) query = query.in('ano', years)
+        return query
+      }
+      await supabase.rpc('purge_origin_data')
+      const [total, pending, investigating, urgent, identified, suspicious, threats] = await Promise.all([
+        count(), count({ status: 'pendente' }), count({ status: 'investigando' }), count({ priority: 'urgent' }), count({ anonimo: 'false' }), suspectCount(), suspectCount('ameaca'),
       ])
-      return jsonResponse({ suspicious: suspicious.count || 0, total: total.count || 0, pending: pending.count || 0, investigating: investigating.count || 0, urgent: urgent.count || 0, identified: identified.count || 0 })
+      return jsonResponse({ suspicious: suspicious.count || 0, threats: threats.count || 0, total: total.count || 0, pending: pending.count || 0, investigating: investigating.count || 0, urgent: urgent.count || 0, identified: identified.count || 0 })
     }
 
     if (req.method === 'GET' && action === 'reports') {
@@ -59,6 +65,8 @@ Deno.serve(async (req) => {
       if (years) query = query.in('ano', years)
       // Possíveis ataques ficam numa fila separada da lista normal
       query = query.eq('suspeito', url.searchParams.get('suspeito') === 'true')
+      const suspectKind = url.searchParams.get('tipo_suspeita')
+      if (suspectKind === 'ameaca' || suspectKind === 'odio') query = query.eq('suspeito_tipo', suspectKind)
       const requestedDestination = url.searchParams.get('destino')
       if (['coordenacao', 'orientacao'].includes(requestedDestination || '')) query = query.eq('destino', requestedDestination)
       for (const field of ['tipo', 'ano', 'status', 'severidade', 'priority']) {
@@ -86,7 +94,13 @@ Deno.serve(async (req) => {
         supabase.from('relato_responses').select('id,subject,message,delivery_status,created_at,sent_at,author_id,admin_profiles(name)').eq('relato_id', id).order('created_at', { ascending: false }),
       ])
       if (reportResult.error) return jsonResponse({ error: 'Relato não encontrado' }, 404)
-      return jsonResponse({ report: reportResult.data, notes: notesResult.data || [], responses: responsesResult.data || [] })
+      // Informa só se a origem ainda pode ser bloqueada, nunca o hash
+      let origin = { can_block: false, blocked: false }
+      if (reportResult.data.suspeito) {
+        const { data: originRow } = await supabase.from('relatos').select('origem_hash').eq('id', id).maybeSingle()
+        if (originRow?.origem_hash) origin = { can_block: true, blocked: (await originState(supabase, originRow.origem_hash)).blocked }
+      }
+      return jsonResponse({ report: reportResult.data, origin, notes: notesResult.data || [], responses: responsesResult.data || [] })
     }
 
     if (req.method === 'DELETE' && action === 'report') {
@@ -114,7 +128,7 @@ Deno.serve(async (req) => {
       const changes: Record<string, unknown> = { data_atualizacao: new Date().toISOString() }
       if (['pendente', 'investigando', 'resolvido'].includes(body.status)) changes.status = body.status
       if (['low', 'normal', 'high', 'urgent'].includes(body.priority)) changes.priority = body.priority
-      if (body.suspeito === false) { changes.suspeito = false; changes.motivo_suspeita = null }
+      if (body.suspeito === false) { changes.suspeito = false; changes.suspeito_tipo = null; changes.motivo_suspeita = null; changes.origem_hash = null; changes.origem_registrada_em = null }
       if (body.assigned_to === null) changes.assigned_to = null
       if (typeof body.assigned_to === 'string') {
         const { data: assignee } = await supabase.from('admin_profiles').select('id').eq('id', body.assigned_to).eq('active', true).maybeSingle()
@@ -141,6 +155,78 @@ Deno.serve(async (req) => {
       if (error) throw error
       await audit(supabase, user.id, 'note.created', 'relato', body.relato_id)
       return jsonResponse({ note: { ...data, admin_profiles: { name: profile.name } } }, 201)
+    }
+
+    // Bloquear a origem de uma mensagem suspeita: qualquer usuário com acesso à denúncia pode bloquear.
+    if (req.method === 'POST' && action === 'block') {
+      const body = await req.json()
+      if (!body.relato_id) return jsonResponse({ error: 'Relato não informado' }, 400)
+      let accessQuery = supabase.from('relatos').select('id,tracking_code,suspeito,origem_hash').eq('id', body.relato_id)
+      if (years) accessQuery = accessQuery.in('ano', years)
+      const { data: target } = await accessQuery.maybeSingle()
+      if (!target) return jsonResponse({ error: 'Relato não encontrado' }, 404)
+      if (!target.suspeito) return jsonResponse({ error: 'Só é possível bloquear a origem de mensagens marcadas como ameaça ou ódio' }, 409)
+      if (!target.origem_hash) return jsonResponse({ error: 'O registro da origem desta mensagem já expirou (24h) e não pode mais ser bloqueado' }, 409)
+
+      const state = await originState(supabase, target.origem_hash)
+      if (state.blocked) return jsonResponse({ error: 'Esta origem já está bloqueada' }, 409)
+
+      // 1º bloqueio: 30 dias. A partir do 2º: definitivo, só um administrador desfaz.
+      const blockNumber = state.previousBlocks + 1
+      const expiresAt = blockNumber === 1 ? new Date(Date.now() + BLOCK_DAYS * 24 * 60 * 60 * 1000).toISOString() : null
+      const { data: block, error } = await supabase.from('blocked_origins').insert({
+        origin_hash: target.origem_hash,
+        block_number: blockNumber,
+        expires_at: expiresAt,
+        blocked_by: user.id,
+        blocked_by_name: profile.name,
+        report_id: target.id,
+        report_code: target.tracking_code,
+      }).select('id,block_number,blocked_at,expires_at').single()
+      if (error) throw error
+      await audit(supabase, user.id, 'origin.blocked', 'relato', target.id, { block_number: blockNumber, definitive: expiresAt === null })
+      // Quem não é administrador não vê prazos nem histórico
+      return jsonResponse(profile.role === 'admin' ? { success: true, block } : { success: true })
+    }
+
+    // Lista de origens bloqueadas: exclusiva de administradores
+    if (req.method === 'GET' && action === 'blocks') {
+      if (profile.role !== 'admin') return jsonResponse({ error: 'Ação exclusiva de administradores' }, 403)
+      await supabase.rpc('purge_origin_data')
+      const { data, error } = await supabase
+        .from('blocked_origins')
+        .select('id,block_number,blocked_at,expires_at,blocked_by_name,report_code,cancelled,cancelled_at,cancelled_by_name')
+        .order('blocked_at', { ascending: false })
+      if (error) throw error
+      return jsonResponse({ blocks: data || [] })
+    }
+
+    if (req.method === 'PATCH' && action === 'block') {
+      if (profile.role !== 'admin') return jsonResponse({ error: 'Ação exclusiva de administradores' }, 403)
+      const body = await req.json()
+      if (!body.id) return jsonResponse({ error: 'Bloqueio não informado' }, 400)
+      const { data: block } = await supabase.from('blocked_origins').select('id,block_number,expires_at,cancelled').eq('id', body.id).maybeSingle()
+      if (!block) return jsonResponse({ error: 'Bloqueio não encontrado' }, 404)
+
+      if (body.op === 'unblock') {
+        const { error } = await supabase.from('blocked_origins').update({ cancelled: true, cancelled_at: new Date().toISOString(), cancelled_by_name: profile.name }).eq('id', body.id)
+        if (error) throw error
+        await audit(supabase, user.id, 'origin.unblocked', 'blocked_origin', body.id)
+        return jsonResponse({ success: true })
+      }
+
+      if (body.op === 'renew') {
+        // Só o 1º bloqueio é renovável; o definitivo não tem prazo para renovar
+        if (block.cancelled || block.block_number !== 1 || !block.expires_at) return jsonResponse({ error: 'Este bloqueio não pode ser renovado' }, 409)
+        const base = Math.max(Date.now(), new Date(block.expires_at).getTime())
+        const expiresAt = new Date(base + BLOCK_DAYS * 24 * 60 * 60 * 1000).toISOString()
+        const { error } = await supabase.from('blocked_origins').update({ expires_at: expiresAt }).eq('id', body.id)
+        if (error) throw error
+        await audit(supabase, user.id, 'origin.renewed', 'blocked_origin', body.id, { expires_at: expiresAt })
+        return jsonResponse({ success: true, expires_at: expiresAt })
+      }
+
+      return jsonResponse({ error: 'Operação inválida' }, 400)
     }
 
     if (req.method === 'POST' && action === 'unit') {

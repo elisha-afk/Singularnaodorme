@@ -497,6 +497,24 @@ function AdminLoading() {
 function AdminDashboard({ profile }) {
   const [view, setView] = useState("reports");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [threatCount, setThreatCount] = useState(0);
+  const [focusThreats, setFocusThreats] = useState(0);
+
+  // Alerta de ameaças sem revisão, visível em todas as telas
+  useEffect(() => {
+    let active = true;
+    const check = () =>
+      adminApi
+        .dashboard()
+        .then((data) => active && setThreatCount(data.threats || 0))
+        .catch(() => {});
+    check();
+    const timer = setInterval(check, 60000);
+    return () => {
+      active = false;
+      clearInterval(timer);
+    };
+  }, []);
   const [theme, setTheme] = useState(() => {
     const saved = localStorage.getItem("adminTheme");
     return saved === "dark" ? "dark" : "light";
@@ -532,6 +550,18 @@ function AdminDashboard({ profile }) {
             <FileText />
             Relatos
           </button>
+          {profile.role === "admin" && (
+            <button
+              className={view === "blocks" ? "active" : ""}
+              onClick={() => {
+                setView("blocks");
+                setSidebarOpen(false);
+              }}
+            >
+              <ShieldCheck />
+              Origens bloqueadas
+            </button>
+          )}
           {profile.role === "admin" && (
             <button
               className={view === "units" ? "active" : ""}
@@ -598,7 +628,26 @@ function AdminDashboard({ profile }) {
             Ver site
           </a>
         </header>
-        {view === "reports" && <ReportsView />}
+        {threatCount > 0 && (
+          <button
+            type="button"
+            className="admin-threat-alert"
+            onClick={() => {
+              setView("reports");
+              setFocusThreats((current) => current + 1);
+            }}
+          >
+            <AlertCircle />
+            <strong>
+              {threatCount === 1
+                ? "1 possível ameaça aguardando revisão"
+                : `${threatCount} possíveis ameaças aguardando revisão`}
+            </strong>
+            <span>Revisar agora</span>
+          </button>
+        )}
+        {view === "reports" && <ReportsView focusThreats={focusThreats} />}
+        {view === "blocks" && profile.role === "admin" && <BlocksView />}
         {view === "units" && profile.role === "admin" && <UnitsView />}
         {view === "users" && profile.role === "admin" && (
           <UsersView currentUser={profile} />
@@ -608,7 +657,7 @@ function AdminDashboard({ profile }) {
   );
 }
 
-function ReportsView() {
+function ReportsView({ focusThreats = 0 }) {
   const [stats, setStats] = useState(null);
   const [reports, setReports] = useState([]);
   const [total, setTotal] = useState(0);
@@ -623,6 +672,7 @@ function ReportsView() {
     destino: "",
     ano: "",
     suspeito: "",
+    tipo_suspeita: "",
   });
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState(null);
@@ -658,7 +708,19 @@ function ReportsView() {
     filters.destino,
     filters.ano,
     filters.suspeito,
+    filters.tipo_suspeita,
   ]);
+
+  // O alerta de ameaças abre direto a aba de ameaças
+  useEffect(() => {
+    if (!focusThreats) return;
+    setPage(1);
+    setFilters((current) => ({
+      ...current,
+      suspeito: "true",
+      tipo_suspeita: "ameaca",
+    }));
+  }, [focusThreats]);
 
   function search(event) {
     event.preventDefault();
@@ -715,7 +777,7 @@ function ReportsView() {
           className={!filters.suspeito ? "active" : ""}
           onClick={() => {
             setPage(1);
-            setFilters((current) => ({ ...current, suspeito: "" }));
+            setFilters((current) => ({ ...current, suspeito: "", tipo_suspeita: "" }));
           }}
         >
           Denúncias
@@ -729,9 +791,33 @@ function ReportsView() {
             setFilters((current) => ({ ...current, suspeito: "true" }));
           }}
         >
-          Possíveis ataques
-          {stats?.suspicious > 0 && <span>{stats.suspicious}</span>}
+          Ameaças e ódio
+          {stats?.suspicious > 0 && (
+            <span className={stats.threats > 0 ? "threat" : ""}>
+              {stats.suspicious}
+            </span>
+          )}
         </button>
+        {filters.suspeito && (
+          <div className="admin-queue-chips">
+            {[
+              ["", "Todas"],
+              ["ameaca", "Ameaças"],
+              ["odio", "Mensagens de ódio"],
+            ].map(([value, label]) => (
+              <button
+                key={value}
+                className={filters.tipo_suspeita === value ? "active" : ""}
+                onClick={() => {
+                  setPage(1);
+                  setFilters((current) => ({ ...current, tipo_suspeita: value }));
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
       <section className="admin-list-panel">
         <div className="admin-filters">
@@ -942,7 +1028,13 @@ function ReportRow({ report, onOpen }) {
     <tr onClick={onOpen}>
       <td>
         <strong>#{report.tracking_code}</strong>
-        {report.suspeito && <em className="admin-suspect-badge">Possível ataque</em>}
+        {report.suspeito && (
+          <em
+            className={`admin-suspect-badge ${report.suspeito_tipo === "ameaca" ? "threat" : ""}`}
+          >
+            {report.suspeito_tipo === "ameaca" ? "Possível ameaça" : "Mensagem de ódio"}
+          </em>
+        )}
         <span>{report.local}</span>
       </td>
       <td>
@@ -1046,6 +1138,24 @@ function ReportDrawer({ id, onClose, onUpdated }) {
     }
   }
 
+  async function blockOrigin() {
+    const accepted = window.confirm(
+      "Bloquear a origem desta mensagem?\n\nA pessoa não poderá enviar novas denúncias. Dependendo do histórico, este bloqueio pode ser definitivo, e só um administrador poderá desfazê-lo.",
+    );
+    if (!accepted) return;
+    setSaving(true);
+    setMessage({ type: "", text: "" });
+    try {
+      await adminApi.blockOrigin(id);
+      setMessage({ type: "success", text: "Origem bloqueada." });
+      await load();
+    } catch (error) {
+      setMessage({ type: "error", text: error.message });
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function removeReport() {
     if (data?.report?.status !== "resolvido" && !data?.report?.suspeito) return;
     const accepted = window.confirm(
@@ -1140,25 +1250,53 @@ function ReportDrawer({ id, onClose, onUpdated }) {
               </label>
             </div>
             {data.report.suspeito && (
-              <div className="admin-suspect-banner">
+              <div
+                className={`admin-suspect-banner ${data.report.suspeito_tipo === "ameaca" ? "threat" : ""}`}
+              >
                 <AlertCircle />
                 <div>
-                  <strong>Possível ataque</strong>
+                  <strong>
+                    {data.report.suspeito_tipo === "ameaca"
+                      ? "Possível ameaça"
+                      : "Possível mensagem de ódio"}
+                  </strong>
                   <p>
                     {data.report.motivo_suspeita ||
                       "Marcada pelo filtro de palavras."}{" "}
-                    Revise antes de descartar: se for uma denúncia real, devolva
-                    para a lista normal.
+                    Revise antes de agir: se for uma denúncia real, devolva para
+                    a lista normal.
+                  </p>
+                  <p className="admin-origin-note">
+                    {data.origin?.blocked
+                      ? "Origem desta mensagem bloqueada."
+                      : data.origin?.can_block
+                        ? "A origem desta mensagem pode ser bloqueada por até 24h após o envio."
+                        : "O registro da origem expirou (24h) e não pode mais ser bloqueado."}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  className="admin-secondary-button"
-                  disabled={saving}
-                  onClick={() => update("suspeito", false)}
-                >
-                  Não é ataque
-                </button>
+                <div className="admin-suspect-actions">
+                  <button
+                    type="button"
+                    className="admin-secondary-button"
+                    disabled={saving}
+                    onClick={() => update("suspeito", false)}
+                  >
+                    {data.report.suspeito_tipo === "ameaca"
+                      ? "Não é ameaça"
+                      : "Não é mensagem de ódio"}
+                  </button>
+                  {data.origin?.can_block && !data.origin?.blocked && (
+                    <button
+                      type="button"
+                      className="admin-danger-button"
+                      disabled={saving}
+                      onClick={blockOrigin}
+                    >
+                      <ShieldCheck />
+                      Bloquear origem
+                    </button>
+                  )}
+                </div>
               </div>
             )}
             {(data.report.status === "resolvido" || data.report.suspeito) && (
@@ -1170,7 +1308,7 @@ function ReportDrawer({ id, onClose, onUpdated }) {
                   onClick={removeReport}
                 >
                   <Trash2 />
-                  {data.report.suspeito ? "Descartar mensagem" : "Excluir denúncia"}
+                  {data.report.suspeito ? "Excluir mensagem" : "Excluir denúncia"}
                 </button>
               </div>
             )}
@@ -1282,6 +1420,135 @@ function ReportDetails({ report }) {
       )}
       {report.escola && <Detail label="Unidade" value={report.escola} />}
     </div>
+  );
+}
+
+function blockStatus(block) {
+  if (block.cancelled) return { label: "Desbloqueado", tone: "off" };
+  if (!block.expires_at) return { label: "Definitivo", tone: "danger" };
+  return new Date(block.expires_at) > new Date()
+    ? { label: "Ativo", tone: "active" }
+    : { label: "Expirado", tone: "off" };
+}
+
+function BlocksView() {
+  const [blocks, setBlocks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState("");
+
+  async function load() {
+    setLoading(true);
+    try {
+      setBlocks((await adminApi.blocks()).blocks);
+      setMessage("");
+    } catch (error) {
+      setMessage(error.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function change(block, op) {
+    const text =
+      op === "unblock"
+        ? "Desbloquear esta origem? Ela poderá voltar a enviar denúncias."
+        : "Renovar este bloqueio por mais 30 dias?";
+    if (!window.confirm(text)) return;
+    try {
+      await adminApi.updateBlock(block.id, op);
+      load();
+    } catch (error) {
+      setMessage(error.message);
+    }
+  }
+
+  return (
+    <main className="admin-main">
+      <div className="admin-page-heading">
+        <div>
+          <span className="admin-kicker">Segurança do canal</span>
+          <h1>Origens bloqueadas</h1>
+          <p>
+            Bloqueios aplicados por uso indevido. Nenhum endereço de IP é
+            guardado, apenas um código que não permite identificar a pessoa.
+          </p>
+        </div>
+        <button className="admin-secondary-button" onClick={load}>
+          <RefreshCw />
+          Atualizar
+        </button>
+      </div>
+      {message && <div className="admin-error">{message}</div>}
+      <section className="admin-users-panel">
+        {loading ? (
+          <div className="admin-table-loading">
+            <Loader2 className="spin" />
+            Carregando bloqueios...
+          </div>
+        ) : blocks.length === 0 ? (
+          <div className="admin-empty">
+            <ShieldCheck />
+            <strong>Nenhuma origem bloqueada</strong>
+            <span>Os bloqueios aplicados aparecerão aqui.</span>
+          </div>
+        ) : (
+          blocks.map((block) => {
+            const status = blockStatus(block);
+            return (
+              <article className="admin-block-row" key={block.id}>
+                <span className={`admin-block-status ${status.tone}`}>
+                  {status.label}
+                </span>
+                <div>
+                  <span>Bloqueio</span>
+                  <strong>
+                    {block.block_number}º{block.block_number > 1 ? " (definitivo)" : ""}
+                  </strong>
+                </div>
+                <div>
+                  <span>Início</span>
+                  <strong>{formatDate(block.blocked_at, true)}</strong>
+                </div>
+                <div>
+                  <span>Vencimento</span>
+                  <strong>
+                    {block.expires_at
+                      ? formatDate(block.expires_at, true)
+                      : "Sem vencimento"}
+                  </strong>
+                </div>
+                <div>
+                  <span>Bloqueado por</span>
+                  <strong>{block.blocked_by_name || "Usuário removido"}</strong>
+                  {block.report_code && <small>Denúncia #{block.report_code}</small>}
+                </div>
+                <div className="admin-user-actions">
+                  {!block.cancelled && block.block_number === 1 && block.expires_at && (
+                    <button
+                      className="admin-secondary-button"
+                      onClick={() => change(block, "renew")}
+                    >
+                      Renovar 30 dias
+                    </button>
+                  )}
+                  {!block.cancelled && (
+                    <button
+                      className="admin-secondary-button"
+                      onClick={() => change(block, "unblock")}
+                    >
+                      Desbloquear
+                    </button>
+                  )}
+                </div>
+              </article>
+            );
+          })
+        )}
+      </section>
+    </main>
   );
 }
 

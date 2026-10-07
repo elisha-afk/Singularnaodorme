@@ -4,7 +4,7 @@ import {
   HandHeart, Heart, Lock, Menu, MessageCircleWarning, Phone, Search, Send,
   ShieldCheck, Sparkles, Sun, Moon, UserRoundCheck, X,
 } from 'lucide-react'
-import { findReport, submitReport } from './supabase.js'
+import { fetchOriginStatus, findReport, submitReport } from './supabase.js'
 import studentsSupportImage from './assets/students-support.jpg'
 import AdminApp from './Admin.jsx'
 
@@ -186,6 +186,12 @@ function ReportPage() {
   const [result, setResult] = useState(null)
   const [trackingCode, setTrackingCode] = useState('')
   const [tracking, setTracking] = useState({ state: 'idle', message: '', data: null })
+  const [origin, setOrigin] = useState({ blocked: false, warning: false, message: null })
+
+  // Avisa antes de preencher se o acesso está bloqueado ou se já houve um bloqueio anterior
+  useEffect(() => {
+    fetchOriginStatus().then(setOrigin).catch(() => {})
+  }, [])
 
   function update(field, value) {
     setReport(current => ({ ...current, [field]: value }))
@@ -244,6 +250,7 @@ function ReportPage() {
 
   async function send(event) {
     event.preventDefault()
+    if (origin.blocked) return
     if (!validate('all')) {
       if (!report.severidade) setStep(1)
       else if (report.descricao.trim().length < 20 || !report.local || !report.data_incidente) setStep(2)
@@ -283,6 +290,7 @@ function ReportPage() {
       <section className="report-hero"><div className="container"><h1><HandHeart />Faça sua denúncia</h1><p>Compartilhe com segurança, anonimato e confiança.</p></div></section>
       <div className="container report-container">
         <div className="safety-alert"><ShieldCheck /><div><strong>Sua segurança é prioridade.</strong><span>Você pode enviar o relato anonimamente e acompanhar o andamento por código.</span></div></div>
+        {origin.message && <section className={`notice ${origin.blocked ? 'error' : 'warning'}`} role="alert"><AlertTriangle /><p>{origin.message}</p></section>}
         <form className="report-form" onSubmit={send} noValidate ref={formRef}>
           <div className="form-progress" aria-label={`Etapa ${step} de 3`}>
             {[['1', 'Situação'], ['2', 'Detalhes'], ['3', 'Segurança']].map(([number, label], index) => <div className={step >= index + 1 ? 'progress-step active' : 'progress-step'} key={number}><span>{step > index + 1 ? <CheckCircle2 /> : number}</span><small>{label}</small></div>)}
@@ -317,7 +325,7 @@ function ReportPage() {
           <div className="form-actions">
             {step > 1 && <button type="button" className="button button-ghost" onClick={() => setStep(current => current - 1)}><ArrowLeft />Voltar</button>}
             {step < 3 && <button type="button" className="button button-primary next-button" onClick={nextStep}>Continuar<ArrowRight /></button>}
-            {step === 3 && <button className="button button-success submit-button" disabled={status === 'sending'}>{status === 'sending' ? <><span className="spinner" />Enviando com segurança...</> : <><Send />{report.tipo === 'sugestao' ? 'Enviar ideia' : 'Enviar denúncia'}</>}</button>}
+            {step === 3 && <button className="button button-success submit-button" disabled={status === 'sending' || origin.blocked}>{status === 'sending' ? <><span className="spinner" />Enviando com segurança...</> : <><Send />{report.tipo === 'sugestao' ? 'Enviar ideia' : 'Enviar denúncia'}</>}</button>}
           </div>
           {status === 'error' && <p className="notice error">{result.error}</p>}
         </form>
@@ -356,11 +364,11 @@ function Faq() {
 }
 
 function TermsPage() {
-  return <LegalPage title="Termos de Uso" updated="10 de agosto de 2026"><h2>1. Finalidade do canal</h2><p>O SingularNãoDorme é um canal escolar para registrar relatos de bullying, conflitos e sugestões. O serviço não substitui atendimento de emergência. Em situação de risco imediato, procure um adulto responsável ou ligue 190.</p><h2>2. Uso responsável</h2><p>Ao enviar um relato, você declara que as informações são verdadeiras conforme seu conhecimento. Não use o canal para ameaçar, ofender, expor pessoas deliberadamente ou registrar informações falsas.</p><h2>3. Anonimato e acompanhamento</h2><p>Você pode enviar o relato anonimamente. Nesse caso, nenhum dado pessoal de identificação é solicitado. O código exibido após o envio é a única forma de acompanhar o relato e não pode ser recuperado se for perdido.</p><h2>4. Tratamento do relato</h2><p>Os relatos são encaminhados automaticamente à Coordenação ou à Orientação, conforme o tipo escolhido, e podem ser analisados, priorizados, investigados e respondidos pela equipe autorizada.</p><h2>5. Limites do serviço</h2><p>A plataforma busca manter o canal disponível e seguro, mas interrupções técnicas podem ocorrer. O envio de um relato não garante uma medida específica ou prazo determinado, pois cada situação exige análise própria.</p></LegalPage>
+  return <LegalPage title="Termos de Uso" updated="7 de outubro de 2026"><h2>1. Finalidade do canal</h2><p>O SingularNãoDorme é um canal escolar para registrar relatos de bullying, conflitos e sugestões. O serviço não substitui atendimento de emergência. Em situação de risco imediato, procure um adulto responsável ou ligue 190.</p><h2>2. Uso responsável</h2><p>Ao enviar um relato, você declara que as informações são verdadeiras conforme seu conhecimento. Não use o canal para ameaçar, ofender, expor pessoas deliberadamente ou registrar informações falsas.</p><h2>3. Anonimato e acompanhamento</h2><p>Você pode enviar o relato anonimamente. Nesse caso, nenhum dado pessoal de identificação é solicitado. O código exibido após o envio é a única forma de acompanhar o relato e não pode ser recuperado se for perdido.</p><h2>4. Tratamento do relato</h2><p>Os relatos são encaminhados automaticamente à Coordenação ou à Orientação, conforme o tipo escolhido, e podem ser analisados, priorizados, investigados e respondidos pela equipe autorizada.</p><h2>5. Limites do serviço</h2><p>A plataforma busca manter o canal disponível e seguro, mas interrupções técnicas podem ocorrer. O envio de um relato não garante uma medida específica ou prazo determinado, pois cada situação exige análise própria.</p><h2>6. Bloqueio por uso indevido</h2><p>Mensagens que contenham ameaças ou ofensas sem relato do ocorrido podem ser separadas para revisão e descartadas. Quem usar o canal de forma indevida pode ter o envio de novas mensagens bloqueado. O primeiro bloqueio dura 30 dias e pode ser renovado pela equipe; quem já tiver sido bloqueado uma vez recebe um aviso, e um novo bloqueio é definitivo, podendo ser desfeito apenas por um administrador. Se você acredita que foi bloqueado por engano, procure a direção da escola.</p></LegalPage>
 }
 
 function PrivacyPage() {
-  return <LegalPage title="Política de Privacidade" updated="10 de agosto de 2026"><h2>1. Dados tratados</h2><p>O canal registra o conteúdo do relato, categoria, gravidade, data, local, envolvidos e testemunhas informados. Nome, e-mail e telefone são coletados somente quando você desativa o anonimato.</p><h2>2. Finalidade</h2><p>Os dados são usados para receber, encaminhar, acompanhar e responder relatos, proteger a comunidade escolar, manter registros de auditoria e administrar o acesso das equipes autorizadas.</p><h2>3. Acesso e compartilhamento</h2><p>Coordenação e Orientação acessam somente os relatos destinados às suas equipes. Administradores autorizados podem visualizar todos os relatos para gestão e segurança do canal. Dados não são vendidos.</p><h2>4. Proteção e conservação</h2><p>O acesso administrativo exige autenticação. As informações são mantidas pelo período necessário ao acompanhamento do relato, ao cumprimento das responsabilidades da instituição e à proteção dos envolvidos.</p><h2>5. Direitos do titular</h2><p>Nos relatos identificados, você pode solicitar informações, correção ou análise sobre seus dados pelos canais oficiais da escola, observados os limites legais e a proteção de outras pessoas envolvidas.</p><h2>6. Relatos anônimos</h2><p>Como o relato anônimo não contém identificação, a escola pode não conseguir relacioná-lo posteriormente à pessoa que o enviou. Guarde o código de rastreamento para consultar o andamento.</p></LegalPage>
+  return <LegalPage title="Política de Privacidade" updated="7 de outubro de 2026"><h2>1. Dados tratados</h2><p>O canal registra o conteúdo do relato, categoria, gravidade, data, local, envolvidos e testemunhas informados. Nome, e-mail e telefone são coletados somente quando você desativa o anonimato.</p><h2>2. Finalidade</h2><p>Os dados são usados para receber, encaminhar, acompanhar e responder relatos, proteger a comunidade escolar, manter registros de auditoria e administrar o acesso das equipes autorizadas.</p><h2>3. Acesso e compartilhamento</h2><p>Cada integrante da equipe acessa somente os relatos dos anos (1º, 2º e 3º) que o administrador autorizou. Administradores podem visualizar todos os relatos para gestão e segurança do canal. Dados não são vendidos.</p><h2>4. Proteção e conservação</h2><p>O acesso administrativo exige autenticação. As informações são mantidas pelo período necessário ao acompanhamento do relato, ao cumprimento das responsabilidades da instituição e à proteção dos envolvidos.</p><h2>5. Direitos do titular</h2><p>Nos relatos identificados, você pode solicitar informações, correção ou análise sobre seus dados pelos canais oficiais da escola, observados os limites legais e a proteção de outras pessoas envolvidas.</p><h2>6. Relatos anônimos</h2><p>Como o relato anônimo não contém identificação, a escola pode não conseguir relacioná-lo posteriormente à pessoa que o enviou. Guarde o código de rastreamento para consultar o andamento.</p><h2>7. Segurança do canal e registro de origem</h2><p>Para impedir abusos, o canal limita a quantidade de envios por origem. Para isso, o servidor transforma o endereço de internet em um código embaralhado (hash), do qual não é possível recuperar o endereço original nem identificar a pessoa. Nenhum endereço de IP é armazenado.</p><p>Esse código é mantido por 24 horas apenas nas mensagens marcadas como possível ameaça ou ofensa, enquanto elas são analisadas, e depois é apagado. Se a equipe bloquear a origem por uso indevido, o código e os dados do bloqueio (datas, número do bloqueio e quem o aplicou) são guardados por até 12 meses após o vencimento, para reconhecer reincidência. Bloqueios definitivos permanecem até serem desfeitos por um administrador. O acesso a essas informações é restrito aos administradores.</p></LegalPage>
 }
 
 function LegalPage({ title, updated, children }) {

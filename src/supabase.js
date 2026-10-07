@@ -26,6 +26,8 @@ async function request(path, options = {}) {
 
   const data = await response.json().catch(() => ({}))
   if (!response.ok) {
+    // Origem bloqueada por uso indevido: mostra a mensagem do servidor
+    if (data.blocked) throw new Error(data.error)
     const details = Array.isArray(data.error) ? data.error.join(' ') : data.error
     if (response.status === 401 || response.status === 403) throw new Error('O canal seguro está temporariamente indisponível. Tente novamente em alguns minutos.')
     if (response.status === 429) throw new Error(details || 'Muitas tentativas em pouco tempo. Aguarde alguns minutos e tente novamente.')
@@ -36,6 +38,10 @@ async function request(path, options = {}) {
 
 export function submitReport(report) {
   return request('submit-relato', { method: 'POST', body: JSON.stringify(report) })
+}
+
+export function fetchOriginStatus() {
+  return request('origin-status', { method: 'GET' })
 }
 
 export function findReport(code) {

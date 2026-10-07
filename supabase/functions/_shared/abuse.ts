@@ -55,8 +55,21 @@ const STAFF_TARGETS = toSet([
   'administradores', 'administracao', 'funcionario', 'funcionarios', 'equipe', 'staff',
 ])
 
-// Se a mensagem fala em risco (violência, automutilação, ameaça), NUNCA é separada:
-// uma ameaça real precisa ser vista logo pela equipe.
+// Termos de violência. Junto de ofensa ou de alvo na escola, a mensagem vira "ameaça".
+const VIOLENCE = toSet([
+  'matar', 'mato', 'matarei', 'explodir', 'explodo', 'bomba', 'atirar', 'atiro', 'tiro', 'massacre', 'esfaquear',
+  'facada', 'queimar', 'enforcar', 'espancar', 'arma', 'faca', 'morra', 'morram', 'chacina',
+])
+
+// Quem relata uma ameaça sofrida (vítima ou testemunha) não deve ser tratado como ameaçador.
+const VICTIM_CUES = toSet([
+  'socorro', 'ajuda', 'ameacou', 'ameacaram', 'ameacando', 'ameacado', 'ameacada', 'disse', 'falou', 'avisou',
+])
+
+const FUTURE_CUES = toSet(['vou', 'vamos', 'vai', 'irei', 'iremos', 'ainda', 'logo', 'amanha'])
+
+// Sinais de risco que NUNCA são separados da lista normal (inclui automutilação):
+// a equipe precisa ver essas mensagens logo, e quem as escreve pode estar pedindo ajuda.
 const RISK = toSet([
   'matar', 'matei', 'morrer', 'morte', 'suicidio', 'suicidar', 'arma', 'faca', 'bomba', 'tiro', 'atirar', 'massacre',
   'machucar', 'machuca', 'machucou', 'bater', 'bateu', 'agredir', 'agrediu', 'ameaca', 'ameacou', 'ameacar',
@@ -69,9 +82,12 @@ const STOPWORDS = toSet([
   'tem', 'ter', 'sem', 'sobre', 'tudo', 'todos', 'todas', 'quando', 'onde', 'quem', 'porque', 'pois',
 ])
 
-export type AbuseVerdict = { suspect: boolean, reason: string | null }
+export type AbuseKind = 'odio' | 'ameaca'
+export type AbuseVerdict = { suspect: boolean, kind: AbuseKind | null, reason: string | null }
 
-const SAFE: AbuseVerdict = { suspect: false, reason: null }
+const SAFE: AbuseVerdict = { suspect: false, kind: null, reason: null }
+const hate = (reason: string): AbuseVerdict => ({ suspect: true, kind: 'odio', reason })
+const threat = (reason: string): AbuseVerdict => ({ suspect: true, kind: 'ameaca', reason })
 
 // Remove o "s" de plural para que "idiotas" e "burros" casem com a lista.
 const matches = (set: Set<string>, token: string) => set.has(token) || (token.length > 3 && set.has(token.slice(0, -1)))
@@ -84,22 +100,32 @@ export function analyzeMessage(...parts: Array<string | undefined | null>): Abus
   const tokens = joined.split(' ').filter(Boolean)
   if (tokens.length === 0) return SAFE
 
+  const offensive = tokens.filter(isOffensive)
+  const targetsStaff = tokens.some((token) => matches(STAFF_TARGETS, token))
+
+  // Ameaça: violência + (ofensa ou alvo na escola com intenção futura), exceto quando é relato de vítima.
+  // "me matar", "me enforcar": é automutilação, não ameaça a terceiros (e nunca deve ser separada).
+  const hasViolence = tokens.some((token, index) => matches(VIOLENCE, token) && tokens[index - 1] !== 'me')
+  const reportsAsVictim = tokens.some((token) => matches(VICTIM_CUES, token))
+  const hasFutureCue = tokens.some((token) => FUTURE_CUES.has(token))
+  if (hasViolence && !reportsAsVictim && (offensive.length > 0 || (targetsStaff && hasFutureCue))) {
+    return threat('Possível ameaça de violência')
+  }
+
   if (tokens.some((token) => matches(RISK, token))) return SAFE
 
-  const offensive = tokens.filter(isOffensive)
   if (offensive.length === 0) {
     const unique = new Set(tokens).size
-    if (tokens.length >= 10 && unique / tokens.length < 0.3) return { suspect: true, reason: 'Texto repetitivo, sem relato do ocorrido' }
+    if (tokens.length >= 10 && unique / tokens.length < 0.3) return hate('Texto repetitivo, sem relato do ocorrido')
     return SAFE
   }
 
   const ratio = offensive.length / tokens.length
-  const targetsStaff = tokens.some((token) => matches(STAFF_TARGETS, token))
   const informative = tokens.filter((token) => token.length >= 4 && !isOffensive(token) && !matches(STAFF_TARGETS, token) && !STOPWORDS.has(token)).length
 
-  if (targetsStaff && offensive.length >= 2 && informative < 6) return { suspect: true, reason: 'Ofensas dirigidas à equipe, sem relato do ocorrido' }
-  if (tokens.length <= 8 && informative === 0) return { suspect: true, reason: 'Mensagem curta, composta por ofensas' }
-  if (ratio >= 0.25) return { suspect: true, reason: 'Mensagem majoritariamente ofensiva, sem relato do ocorrido' }
+  if (targetsStaff && offensive.length >= 2 && informative < 6) return hate('Ofensas dirigidas à equipe, sem relato do ocorrido')
+  if (tokens.length <= 8 && informative === 0) return hate('Mensagem curta, composta por ofensas')
+  if (ratio >= 0.25) return hate('Mensagem majoritariamente ofensiva, sem relato do ocorrido')
   return SAFE
 }
 
