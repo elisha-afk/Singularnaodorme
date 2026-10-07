@@ -21,12 +21,32 @@ export function normalize(text: string): string {
 const toSet = (words: string[]) => new Set(words.map(normalize))
 
 const OFFENSIVE = toSet([
+  // Xingamentos gerais
   'idiota', 'imbecil', 'burro', 'burra', 'otario', 'otaria', 'babaca', 'lixo', 'merda', 'bosta', 'porra', 'caralho',
-  'carai', 'puta', 'puto', 'viado', 'veado', 'vadia', 'vagabundo', 'vagabunda', 'arrombado', 'arrombada', 'desgracado',
-  'desgracada', 'fdp', 'vsf', 'vtnc', 'pqp', 'cuzao', 'buceta', 'piranha', 'retardado', 'retardada', 'escroto',
-  'escrota', 'nojento', 'nojenta', 'corno', 'cretino', 'cretina', 'verme', 'maldito', 'maldita', 'inutil', 'palhaco',
-  'safado', 'safada', 'cacete', 'foder', 'fodase', 'foda', 'xereca', 'punheta', 'tomanocu', 'filhodaputa',
+  'carai', 'krl', 'crl', 'prr', 'puta', 'puto', 'vadia', 'vagabundo', 'vagabunda', 'arrombado', 'arrombada',
+  'desgracado', 'desgracada', 'fdp', 'vsf', 'vtnc', 'tnc', 'pqp', 'pnc', 'cuzao', 'cu', 'buceta', 'piranha',
+  'escroto', 'escrota', 'nojento', 'nojenta', 'corno', 'corna', 'cretino', 'cretina', 'verme', 'maldito', 'maldita',
+  'inutil', 'palhaco', 'safado', 'safada', 'cacete', 'xereca', 'punheta', 'trouxa', 'jumento', 'canalha', 'crapula',
+  'miseravel', 'lazarento', 'ordinario', 'escoria', 'cachorra', 'rapariga',
+  'quenga', 'prostituta', 'boqueteira', 'mamador', 'chupador', 'merdinha', 'bostinha', 'cuzinho',
+  // Verbos e variações de "foder"
+  'foder', 'fode', 'fodeu', 'fodendo', 'fodido', 'fodida', 'fodase', 'foda', 'fuder', 'fudeu', 'fudendo', 'fudido',
+  // Ofensas discriminatórias (homofobia, racismo, capacitismo, xenofobia)
+  'viado', 'veado', 'viadinho', 'bicha', 'sapatao', 'baitola', 'boiola', 'traveco', 'macaco', 'macaca', 'crioulo',
+  'criolo', 'retardado', 'retardada', 'mongoloide', 'demente', 'aleijado', 'aleijada', 'favelado',
+  // Termos compostos viram uma palavra só (ver PHRASES)
+  'filhodaputa', 'tomanocu', 'paunocu', 'enfianocu', 'chupapau', 'putaquepariu',
 ])
+
+// Radicais de palavras longas e pouco ambíguas: pegam variações como "arrombadinho" ou "vagabundagem".
+const OFFENSIVE_STEMS = ['arrombad', 'desgracad', 'vagabund', 'retardad', 'escrotin', 'putinh', 'merdinh', 'bostinh', 'cuzinh', 'filhodaput']
+
+// Expressões ofensivas com várias palavras, juntadas em um termo só antes da análise.
+const PHRASES: Array<[string, string]> = [
+  ['filho da puta', 'filhodaputa'], ['filha da puta', 'filhodaputa'], ['puta que pariu', 'putaquepariu'],
+  ['vai tomar no cu', 'tomanocu'], ['tomar no cu', 'tomanocu'], ['toma no cu', 'tomanocu'], ['pau no cu', 'paunocu'],
+  ['enfia no cu', 'enfianocu'], ['chupa pau', 'chupapau'], ['vai se foder', 'foder'], ['vai se fuder', 'fuder'],
+].map(([phrase, term]) => [normalize(phrase), normalize(term)] as [string, string])
 
 // Quem recebe a denúncia. Ofensa dirigida a eles, sem relato nenhum, é o caso mais típico de ataque.
 const STAFF_TARGETS = toSet([
@@ -55,16 +75,18 @@ const SAFE: AbuseVerdict = { suspect: false, reason: null }
 
 // Remove o "s" de plural para que "idiotas" e "burros" casem com a lista.
 const matches = (set: Set<string>, token: string) => set.has(token) || (token.length > 3 && set.has(token.slice(0, -1)))
+const isOffensive = (token: string) => matches(OFFENSIVE, token) || OFFENSIVE_STEMS.some((stem) => token.startsWith(stem))
 
 export function analyzeMessage(...parts: Array<string | undefined | null>): AbuseVerdict {
   const normalized = normalize(parts.filter(Boolean).join(' '))
-  // "filho da puta" colado vira um único termo da lista.
-  const tokens = normalized.replace('filho da puta', 'filhodaputa').split(' ').filter(Boolean)
+  // Expressões compostas ("filho da puta", "vai tomar no cu") viram um único termo da lista.
+  const joined = PHRASES.reduce((text, [phrase, term]) => text.split(phrase).join(term), normalized)
+  const tokens = joined.split(' ').filter(Boolean)
   if (tokens.length === 0) return SAFE
 
   if (tokens.some((token) => matches(RISK, token))) return SAFE
 
-  const offensive = tokens.filter((token) => matches(OFFENSIVE, token))
+  const offensive = tokens.filter(isOffensive)
   if (offensive.length === 0) {
     const unique = new Set(tokens).size
     if (tokens.length >= 10 && unique / tokens.length < 0.3) return { suspect: true, reason: 'Texto repetitivo, sem relato do ocorrido' }
@@ -73,10 +95,10 @@ export function analyzeMessage(...parts: Array<string | undefined | null>): Abus
 
   const ratio = offensive.length / tokens.length
   const targetsStaff = tokens.some((token) => matches(STAFF_TARGETS, token))
-  const informative = tokens.filter((token) => token.length >= 4 && !matches(OFFENSIVE, token) && !matches(STAFF_TARGETS, token) && !STOPWORDS.has(token)).length
+  const informative = tokens.filter((token) => token.length >= 4 && !isOffensive(token) && !matches(STAFF_TARGETS, token) && !STOPWORDS.has(token)).length
 
   if (targetsStaff && offensive.length >= 2 && informative < 6) return { suspect: true, reason: 'Ofensas dirigidas à equipe, sem relato do ocorrido' }
-  if (tokens.length <= 8) return { suspect: true, reason: 'Mensagem curta, composta por ofensas' }
+  if (tokens.length <= 8 && informative === 0) return { suspect: true, reason: 'Mensagem curta, composta por ofensas' }
   if (ratio >= 0.25) return { suspect: true, reason: 'Mensagem majoritariamente ofensiva, sem relato do ocorrido' }
   return SAFE
 }
