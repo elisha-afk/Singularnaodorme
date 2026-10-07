@@ -1418,7 +1418,7 @@ function NotesPanel({ notes, note, setNote, onSubmit, saving }) {
           <article key={entry.id}>
             <span />
             <div>
-              <strong>{entry.admin_profiles?.name || "Coordenação"}</strong>
+              <strong>{entry.admin_profiles?.name || "Usuário removido"}</strong>
               <small>{formatDate(entry.created_at, true)}</small>
               <p>{entry.content}</p>
             </div>
@@ -1511,7 +1511,7 @@ function ResponsePanel({
               </span>
             </div>
             <small>
-              {entry.admin_profiles?.name || "Coordenação"} ·{" "}
+              {entry.admin_profiles?.name || "Usuário removido"} ·{" "}
               {formatDate(entry.created_at, true)}
             </small>
             <p>{entry.message}</p>
@@ -1529,6 +1529,7 @@ function UsersView({ currentUser }) {
   const [showCreate, setShowCreate] = useState(false);
   const [resetUser, setResetUser] = useState(null);
   const [accessUser, setAccessUser] = useState(null);
+  const [deleteUser, setDeleteUser] = useState(null);
   const [message, setMessage] = useState("");
 
   async function load() {
@@ -1627,6 +1628,14 @@ function UsersView({ currentUser }) {
                 >
                   {user.active ? "Desativar" : "Reativar"}
                 </button>
+                <button
+                  className="admin-danger-button"
+                  disabled={user.id === currentUser.id}
+                  onClick={() => setDeleteUser(user)}
+                >
+                  <Trash2 />
+                  Excluir
+                </button>
               </div>
             </article>
           ))
@@ -1637,6 +1646,16 @@ function UsersView({ currentUser }) {
           onClose={() => setShowCreate(false)}
           onCreated={() => {
             setShowCreate(false);
+            load();
+          }}
+        />
+      )}
+      {deleteUser && (
+        <DeleteUserModal
+          user={deleteUser}
+          onClose={() => setDeleteUser(null)}
+          onDeleted={() => {
+            setDeleteUser(null);
             load();
           }}
         />
@@ -1662,6 +1681,76 @@ function UsersView({ currentUser }) {
         />
       )}
     </main>
+  );
+}
+
+function DeleteUserModal({ user, onClose, onDeleted }) {
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function confirm(event) {
+    event.preventDefault();
+    setLoading(true);
+    setError("");
+    try {
+      await adminApi.deleteUser(user.id, password);
+      onDeleted();
+    } catch (deleteError) {
+      setError(deleteError.message);
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="admin-modal-layer">
+      <button
+        className="admin-drawer-backdrop"
+        onClick={onClose}
+        aria-label="Fechar"
+      />
+      <form className="admin-modal" onSubmit={confirm}>
+        <header>
+          <div>
+            <span className="admin-kicker">Excluir acesso</span>
+            <h2>Remover {user.name}</h2>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Fechar">
+            <X />
+          </button>
+        </header>
+        <p>
+          O acesso de <strong>{user.name}</strong> ({user.email}) será
+          excluído definitivamente. As observações e respostas já registradas
+          continuam no histórico. Para apenas bloquear o acesso, use
+          "Desativar".
+        </p>
+        <label>
+          Sua senha de administrador
+          <input
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            required
+            autoFocus
+          />
+        </label>
+        {error && <div className="admin-error">{error}</div>}
+        <footer>
+          <button
+            type="button"
+            className="admin-secondary-button"
+            onClick={onClose}
+          >
+            Cancelar
+          </button>
+          <button className="admin-danger-button" disabled={loading || !password}>
+            {loading ? "Excluindo..." : "Excluir acesso"}
+          </button>
+        </footer>
+      </form>
+    </div>
   );
 }
 

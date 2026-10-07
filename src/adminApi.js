@@ -57,6 +57,7 @@ export const adminApi = {
   users: () => adminRequest('admin-users'),
   createUser: (user) => adminRequest('admin-users', '', { method: 'POST', body: JSON.stringify(user) }),
   updateUser: (user) => adminRequest('admin-users', '', { method: 'PATCH', body: JSON.stringify(user) }),
+  deleteUser: (id, adminPassword) => adminRequest('admin-users', '', { method: 'DELETE', body: JSON.stringify({ id, admin_password: adminPassword }) }),
   createUnit: (unit) => adminRequest('admin-api', '?action=unit', { method: 'POST', body: JSON.stringify(unit) }),
   updateUnit: (unit) => adminRequest('admin-api', '?action=unit', { method: 'PATCH', body: JSON.stringify(unit) }),
   deleteUnit: (id) => adminRequest('admin-api', `?action=unit&id=${encodeURIComponent(id)}`, { method: 'DELETE' }),

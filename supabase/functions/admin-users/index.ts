@@ -1,3 +1,4 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { audit, corsHeaders, jsonResponse, requireStaff } from '../_shared/admin.ts'
 
 const parseYears = (value: unknown) => Array.isArray(value) ? [...new Set(value.map(Number).filter((year) => [1, 2, 3].includes(year)))].sort() : []
@@ -6,7 +7,7 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
   try {
-    const { supabase, user } = await requireStaff(req, true)
+    const { supabase, user, profile: adminProfile } = await requireStaff(req, true)
 
     if (req.method === 'GET') {
       const [{ data: authData, error: authError }, { data: profiles, error: profileError }] = await Promise.all([
@@ -57,6 +58,28 @@ Deno.serve(async (req) => {
       if (error) throw error
       await audit(supabase, user.id, 'user.updated', 'admin_profile', body.id, changes)
       return jsonResponse({ user: data })
+    }
+
+    if (req.method === 'DELETE') {
+      const body = await req.json().catch(() => ({}))
+      if (!body.id) return jsonResponse({ error: 'Usuário não informado' }, 400)
+      if (body.id === user.id) return jsonResponse({ error: 'Você não pode excluir o seu próprio acesso' }, 400)
+      const adminPassword = String(body.admin_password || '')
+      if (!adminPassword || !user.email) return jsonResponse({ error: 'Informe a sua senha de administrador para confirmar' }, 400)
+
+      // Confirma a senha do administrador com um login descartável (sem alterar a sessão atual).
+      const verifier = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, { auth: { persistSession: false, autoRefreshToken: false } })
+      const { error: passwordError } = await verifier.auth.signInWithPassword({ email: user.email, password: adminPassword })
+      if (passwordError) return jsonResponse({ error: 'Senha do administrador incorreta' }, 403)
+
+      const { data: target } = await supabase.from('admin_profiles').select('id,name,role').eq('id', body.id).maybeSingle()
+      if (!target) return jsonResponse({ error: 'Usuário não encontrado' }, 404)
+      const { data: authTarget } = await supabase.auth.admin.getUserById(body.id)
+
+      const { error: deleteError } = await supabase.auth.admin.deleteUser(body.id)
+      if (deleteError) throw deleteError
+      await audit(supabase, user.id, 'user.deleted', 'admin_profile', body.id, { name: target.name, role: target.role, email: authTarget?.user?.email, deleted_by: adminProfile.name })
+      return jsonResponse({ success: true })
     }
 
     return jsonResponse({ error: 'Método não permitido' }, 405)
