@@ -28,7 +28,7 @@ async function request(path, options = {}) {
   if (!response.ok) {
     const details = Array.isArray(data.error) ? data.error.join(' ') : data.error
     if (response.status === 401 || response.status === 403) throw new Error('O canal seguro está temporariamente indisponível. Tente novamente em alguns minutos.')
-    if (response.status === 429) throw new Error('Muitas tentativas em pouco tempo. Aguarde um minuto e tente novamente.')
+    if (response.status === 429) throw new Error(details || 'Muitas tentativas em pouco tempo. Aguarde alguns minutos e tente novamente.')
     throw new Error(details || 'Não foi possível concluir a solicitação.')
   }
   return data

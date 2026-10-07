@@ -1438,3 +1438,66 @@
 .admin-year-permissions small { flex-basis: 100%; opacity: 0.7; }
 .admin-checkbox { display: inline-flex; align-items: center; gap: 8px; flex-direction: row; }
 .admin-checkbox input { width: auto; }
+
+.admin-queue-tabs {
+  display: flex;
+  gap: 8px;
+  margin: 4px 0 14px;
+}
+.admin-queue-tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  border: 1px solid #d9e0ee;
+  border-radius: 999px;
+  color: #526078;
+  background: transparent;
+  font-weight: 800;
+  cursor: pointer;
+}
+.admin-queue-tabs button.active {
+  border-color: #2457e6;
+  color: #2457e6;
+  background: rgb(36 87 230 / 8%);
+}
+.admin-queue-tabs button span {
+  min-width: 22px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  color: #fff;
+  background: #d97706;
+  font-size: 0.78rem;
+  text-align: center;
+}
+.admin-suspect-badge {
+  display: inline-block;
+  width: fit-content;
+  margin: 3px 0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: #92400e;
+  background: #fef3c7;
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 800;
+}
+.admin-suspect-banner {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid #f59e0b;
+  border-radius: 8px;
+  color: #92400e;
+  background: #fffbeb;
+}
+.admin-suspect-banner p { margin: 2px 0 0; font-size: 0.88rem; }
+.admin-shell.theme-dark .admin-queue-tabs button { border-color: #334155; color: #94a3b8; }
+.admin-shell.theme-dark .admin-queue-tabs button.active { border-color: #6f8cff; color: #9db1ff; background: rgb(111 140 255 / 12%); }
+.admin-shell.theme-dark .admin-suspect-banner { border-color: #b45309; color: #fcd34d; background: #2b2110; }
+.admin-shell.theme-dark .admin-suspect-badge { color: #fcd34d; background: #3a2a0a; }
+@media (max-width: 520px) {
+  .admin-suspect-banner { grid-template-columns: 1fr; }
+}

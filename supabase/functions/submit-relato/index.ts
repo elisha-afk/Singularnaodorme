@@ -2,6 +2,7 @@
 // Edge Function para processar denúncias
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { analyzeMessage, hashOrigin, RATE_LIMIT } from '../_shared/abuse.ts'
 
 interface RelatoData {
   tipo: string
@@ -58,8 +59,29 @@ Deno.serve(async (req) => {
     // Criar cliente Supabase
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    
     const supabase = createClient(supabaseUrl, supabaseKey)
+
+    // Limite de envios por origem: guarda apenas um hash com sal, nunca o IP
+    const ip = (req.headers.get('cf-connecting-ip') || req.headers.get('x-forwarded-for') || 'desconhecido').split(',')[0].trim()
+    const originHash = await hashOrigin(ip, Deno.env.get('ABUSE_SALT') || supabaseKey)
+    const windowStart = new Date(Date.now() - RATE_LIMIT.windowMinutes * 60 * 1000).toISOString()
+    const { count: recentAttempts } = await supabase
+      .from('submission_attempts')
+      .select('id', { count: 'exact', head: true })
+      .eq('origin_hash', originHash)
+      .gte('created_at', windowStart)
+    if ((recentAttempts || 0) >= RATE_LIMIT.maxRequests) {
+      return new Response(
+        JSON.stringify({ error: `Você já enviou ${RATE_LIMIT.maxRequests} mensagens recentemente. Aguarde até ${RATE_LIMIT.windowMinutes} minutos para enviar outra.` }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+    await supabase.from('submission_attempts').insert({ origin_hash: originHash })
+    // Os registros do limite não precisam durar: apaga o que tem mais de 24h
+    await supabase.from('submission_attempts').delete().lt('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+
+    // Filtro de palavras: apenas marca como suspeita, a denúncia é salva do mesmo jeito
+    const verdict = analyzeMessage(sanitizedData.descricao, sanitizedData.envolvidos, sanitizedData.testemunhas)
 
     // Gerar código de rastreamento
     const trackingCode = generateTrackingCode()
@@ -69,6 +91,8 @@ Deno.serve(async (req) => {
       .from('relatos')
       .insert({
         ...sanitizedData,
+        suspeito: verdict.suspect,
+        motivo_suspeita: verdict.reason,
         tracking_code: trackingCode,
         status: 'pendente',
         data_criacao: new Date().toISOString(),

@@ -622,6 +622,7 @@ function ReportsView() {
     anonimo: "",
     destino: "",
     ano: "",
+    suspeito: "",
   });
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState(null);
@@ -655,6 +656,8 @@ function ReportsView() {
     filters.priority,
     filters.anonimo,
     filters.destino,
+    filters.ano,
+    filters.suspeito,
   ]);
 
   function search(event) {
@@ -705,6 +708,31 @@ function ReportsView() {
           />
         </div>
       )}
+      <div className="admin-queue-tabs" role="tablist">
+        <button
+          role="tab"
+          aria-selected={!filters.suspeito}
+          className={!filters.suspeito ? "active" : ""}
+          onClick={() => {
+            setPage(1);
+            setFilters((current) => ({ ...current, suspeito: "" }));
+          }}
+        >
+          Denúncias
+        </button>
+        <button
+          role="tab"
+          aria-selected={!!filters.suspeito}
+          className={filters.suspeito ? "active" : ""}
+          onClick={() => {
+            setPage(1);
+            setFilters((current) => ({ ...current, suspeito: "true" }));
+          }}
+        >
+          Possíveis ataques
+          {stats?.suspicious > 0 && <span>{stats.suspicious}</span>}
+        </button>
+      </div>
       <section className="admin-list-panel">
         <div className="admin-filters">
           <form onSubmit={search}>
@@ -914,6 +942,7 @@ function ReportRow({ report, onOpen }) {
     <tr onClick={onOpen}>
       <td>
         <strong>#{report.tracking_code}</strong>
+        {report.suspeito && <em className="admin-suspect-badge">Possível ataque</em>}
         <span>{report.local}</span>
       </td>
       <td>
@@ -1018,7 +1047,7 @@ function ReportDrawer({ id, onClose, onUpdated }) {
   }
 
   async function removeReport() {
-    if (data?.report?.status !== "resolvido") return;
+    if (data?.report?.status !== "resolvido" && !data?.report?.suspeito) return;
     const accepted = window.confirm(
       `Tem certeza que deseja excluir o relato #${data.report.tracking_code}? Esta ação não pode ser desfeita.`,
     );
@@ -1110,7 +1139,29 @@ function ReportDrawer({ id, onClose, onUpdated }) {
                 </select>
               </label>
             </div>
-            {data.report.status === "resolvido" && (
+            {data.report.suspeito && (
+              <div className="admin-suspect-banner">
+                <AlertCircle />
+                <div>
+                  <strong>Possível ataque</strong>
+                  <p>
+                    {data.report.motivo_suspeita ||
+                      "Marcada pelo filtro de palavras."}{" "}
+                    Revise antes de descartar: se for uma denúncia real, devolva
+                    para a lista normal.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="admin-secondary-button"
+                  disabled={saving}
+                  onClick={() => update("suspeito", false)}
+                >
+                  Não é ataque
+                </button>
+              </div>
+            )}
+            {(data.report.status === "resolvido" || data.report.suspeito) && (
               <div className="admin-drawer-danger">
                 <button
                   type="button"
@@ -1119,7 +1170,7 @@ function ReportDrawer({ id, onClose, onUpdated }) {
                   onClick={removeReport}
                 >
                   <Trash2 />
-                  Excluir denúncia
+                  {data.report.suspeito ? "Descartar mensagem" : "Excluir denúncia"}
                 </button>
               </div>
             )}

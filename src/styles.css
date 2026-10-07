@@ -312,3 +312,5 @@ a { color: inherit; }
   .faq-help a { width: 100%; margin-left: 37px; }
   .legal-content { padding: 21px; }
 }
+
+.form-note { margin: 0 0 12px; color: var(--muted); font-size: .88rem; line-height: 1.5; }

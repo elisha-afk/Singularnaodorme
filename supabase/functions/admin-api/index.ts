@@ -1,6 +1,6 @@
 import { allowedYears, audit, corsHeaders, jsonResponse, requireStaff } from '../_shared/admin.ts'
 
-const reportFields = 'id,tracking_code,tipo,descricao,local,data_incidente,envolvidos,testemunhas,severidade,anonimo,nome,email,telefone,escola,destino,ano,status,resposta,data_criacao,data_atualizacao,priority,assigned_to'
+const reportFields = 'id,tracking_code,tipo,descricao,local,data_incidente,envolvidos,testemunhas,severidade,anonimo,nome,email,telefone,escola,destino,ano,suspeito,motivo_suspeita,status,resposta,data_criacao,data_atualizacao,priority,assigned_to'
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
@@ -39,15 +39,17 @@ Deno.serve(async (req) => {
 
     if (req.method === 'GET' && action === 'dashboard') {
       const count = (filters: Record<string, string> = {}) => {
-        let query = supabase.from('relatos').select('id', { count: 'exact', head: true })
+        let query = supabase.from('relatos').select('id', { count: 'exact', head: true }).eq('suspeito', false)
         if (years) query = query.in('ano', years)
         Object.entries(filters).forEach(([key, value]) => { query = query.eq(key, value) })
         return query
       }
-      const [total, pending, investigating, urgent, identified] = await Promise.all([
-        count(), count({ status: 'pendente' }), count({ status: 'investigando' }), count({ priority: 'urgent' }), count({ anonimo: 'false' }),
+      let suspiciousQuery = supabase.from('relatos').select('id', { count: 'exact', head: true }).eq('suspeito', true)
+      if (years) suspiciousQuery = suspiciousQuery.in('ano', years)
+      const [total, pending, investigating, urgent, identified, suspicious] = await Promise.all([
+        count(), count({ status: 'pendente' }), count({ status: 'investigando' }), count({ priority: 'urgent' }), count({ anonimo: 'false' }), suspiciousQuery,
       ])
-      return jsonResponse({ total: total.count || 0, pending: pending.count || 0, investigating: investigating.count || 0, urgent: urgent.count || 0, identified: identified.count || 0 })
+      return jsonResponse({ suspicious: suspicious.count || 0, total: total.count || 0, pending: pending.count || 0, investigating: investigating.count || 0, urgent: urgent.count || 0, identified: identified.count || 0 })
     }
 
     if (req.method === 'GET' && action === 'reports') {
@@ -55,6 +57,8 @@ Deno.serve(async (req) => {
       const pageSize = Math.min(50, Math.max(10, Number(url.searchParams.get('pageSize')) || 20))
       let query = supabase.from('relatos').select(reportFields, { count: 'exact' })
       if (years) query = query.in('ano', years)
+      // Possíveis ataques ficam numa fila separada da lista normal
+      query = query.eq('suspeito', url.searchParams.get('suspeito') === 'true')
       const requestedDestination = url.searchParams.get('destino')
       if (['coordenacao', 'orientacao'].includes(requestedDestination || '')) query = query.eq('destino', requestedDestination)
       for (const field of ['tipo', 'ano', 'status', 'severidade', 'priority']) {
@@ -89,13 +93,13 @@ Deno.serve(async (req) => {
       const id = url.searchParams.get('id')
       if (!id) return jsonResponse({ error: 'Relato não informado' }, 400)
 
-      let findQuery = supabase.from('relatos').select('id,tracking_code,status').eq('id', id)
+      let findQuery = supabase.from('relatos').select('id,tracking_code,status,suspeito').eq('id', id)
       if (years) findQuery = findQuery.in('ano', years)
       const { data: existingReport, error: findError } = await findQuery.maybeSingle()
 
       if (findError) throw findError
       if (!existingReport) return jsonResponse({ error: 'Relato não encontrado' }, 404)
-      if (existingReport.status !== 'resolvido') return jsonResponse({ error: 'A denúncia só pode ser excluída quando estiver resolvida' }, 409)
+      if (existingReport.status !== 'resolvido' && !existingReport.suspeito) return jsonResponse({ error: 'A denúncia só pode ser excluída quando estiver resolvida' }, 409)
 
       const { error: deleteError } = await supabase.from('relatos').delete().eq('id', id)
       if (deleteError) throw deleteError
@@ -110,6 +114,7 @@ Deno.serve(async (req) => {
       const changes: Record<string, unknown> = { data_atualizacao: new Date().toISOString() }
       if (['pendente', 'investigando', 'resolvido'].includes(body.status)) changes.status = body.status
       if (['low', 'normal', 'high', 'urgent'].includes(body.priority)) changes.priority = body.priority
+      if (body.suspeito === false) { changes.suspeito = false; changes.motivo_suspeita = null }
       if (body.assigned_to === null) changes.assigned_to = null
       if (typeof body.assigned_to === 'string') {
         const { data: assignee } = await supabase.from('admin_profiles').select('id').eq('id', body.assigned_to).eq('active', true).maybeSingle()
