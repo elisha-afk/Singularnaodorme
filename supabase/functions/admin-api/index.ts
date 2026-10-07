@@ -86,15 +86,12 @@ Deno.serve(async (req) => {
     }
 
     if (req.method === 'DELETE' && action === 'report') {
-      if (profile.role !== 'admin') return jsonResponse({ error: 'Ação exclusiva de administradores' }, 403)
       const id = url.searchParams.get('id')
       if (!id) return jsonResponse({ error: 'Relato não informado' }, 400)
 
-      const { data: existingReport, error: findError } = await supabase
-        .from('relatos')
-        .select('id,tracking_code,status')
-        .eq('id', id)
-        .maybeSingle()
+      let findQuery = supabase.from('relatos').select('id,tracking_code,status').eq('id', id)
+      if (years) findQuery = findQuery.in('ano', years)
+      const { data: existingReport, error: findError } = await findQuery.maybeSingle()
 
       if (findError) throw findError
       if (!existingReport) return jsonResponse({ error: 'Relato não encontrado' }, 404)

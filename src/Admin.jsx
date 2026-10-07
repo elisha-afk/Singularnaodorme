@@ -598,7 +598,7 @@ function AdminDashboard({ profile }) {
             Ver site
           </a>
         </header>
-        {view === "reports" && <ReportsView isAdmin={profile.role === "admin"} />}
+        {view === "reports" && <ReportsView />}
         {view === "units" && profile.role === "admin" && <UnitsView />}
         {view === "users" && profile.role === "admin" && (
           <UsersView currentUser={profile} />
@@ -608,7 +608,7 @@ function AdminDashboard({ profile }) {
   );
 }
 
-function ReportsView({ isAdmin }) {
+function ReportsView() {
   const [stats, setStats] = useState(null);
   const [reports, setReports] = useState([]);
   const [total, setTotal] = useState(0);
@@ -872,7 +872,6 @@ function ReportsView({ isAdmin }) {
           id={selectedId}
           onClose={() => setSelectedId(null)}
           onUpdated={load}
-          canDelete={isAdmin}
         />
       )}
     </main>
@@ -946,7 +945,7 @@ function ReportRow({ report, onOpen }) {
   );
 }
 
-function ReportDrawer({ id, onClose, onUpdated, canDelete }) {
+function ReportDrawer({ id, onClose, onUpdated }) {
   const [data, setData] = useState(null);
   const [staff, setStaff] = useState([]);
   const [tab, setTab] = useState("details");
@@ -1019,7 +1018,7 @@ function ReportDrawer({ id, onClose, onUpdated, canDelete }) {
   }
 
   async function removeReport() {
-    if (!canDelete || data?.report?.status !== "resolvido") return;
+    if (data?.report?.status !== "resolvido") return;
     const accepted = window.confirm(
       `Tem certeza que deseja excluir o relato #${data.report.tracking_code}? Esta ação não pode ser desfeita.`,
     );
@@ -1111,7 +1110,7 @@ function ReportDrawer({ id, onClose, onUpdated, canDelete }) {
                 </select>
               </label>
             </div>
-            {canDelete && data.report.status === "resolvido" && (
+            {data.report.status === "resolvido" && (
               <div className="admin-drawer-danger">
                 <button
                   type="button"
