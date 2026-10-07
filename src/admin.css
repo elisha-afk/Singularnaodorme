@@ -835,10 +835,11 @@
 .admin-modal-layer {
   position: fixed;
   z-index: 80;
+  overflow-y: auto;
   inset: 0;
 }
 .admin-drawer-backdrop {
-  position: absolute;
+  position: fixed;
   border: 0;
   background: rgb(15 23 42 / 52%);
   inset: 0;
@@ -1207,7 +1208,7 @@
   width: min(560px, calc(100% - 24px));
   gap: 15px;
   padding: 24px;
-  margin: 8vh auto;
+  margin: 4vh auto;
   border-radius: 8px;
   background: #fff;
   box-shadow: 0 20px 60px rgb(15 23 42 / 28%);
