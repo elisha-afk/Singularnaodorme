@@ -157,6 +157,8 @@ a { color: inherit; }
 .site-footer p { margin: 7px 0; }
 .footer-brand { display: flex; align-items: center; justify-content: center; gap: 12px; }
 .footer-brand strong { font-size: 1.1rem; }
+.staff-access { color: inherit; text-decoration: none; cursor: text; }
+.staff-access:focus-visible { outline: 1px dotted currentColor; }
 .footer-logo { width: 58px; height: 58px; object-fit: contain; }
 
 /* ---------- Report page ---------- */

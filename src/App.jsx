@@ -376,7 +376,7 @@ function LegalPage({ title, updated, children }) {
 }
 
 function Footer() {
-  return <footer className="site-footer"><div className="footer-brand"><img className="footer-logo" src="/singular-nao-dorme-logo.png" alt="" /><strong>SingularNãoDorme</strong></div><p>Respeito, acolhimento e proteção para a comunidade escolar.</p><p>CVV: <strong>188</strong> · Emergência: <strong>190</strong> · Direitos Humanos: <strong>100</strong></p><small>© 2026 SingularNãoDorme</small></footer>
+  return <footer className="site-footer"><div className="footer-brand"><img className="footer-logo" src="/singular-nao-dorme-logo.png" alt="" /><strong>SingularNãoDorme</strong></div><p>Respeito, acolhimento e proteção para a comunidade escolar.</p><p>CVV: <strong>188</strong> · Emergência: <strong>190</strong> · Direitos Humanos: <strong>100</strong></p><small><a className="staff-access" href="#/adm" aria-label="Acesso da equipe">©</a> 2026 SingularNãoDorme</small></footer>
 }
 
 export default function App() {
