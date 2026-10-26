@@ -2232,8 +2232,28 @@ function CreateUserModal({ onClose, onCreated }) {
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [units, setUnits] = useState([]);
+  const [unitsLoading, setUnitsLoading] = useState(true);
   const update = (field, value) =>
     setForm((current) => ({ ...current, [field]: value }));
+
+  useEffect(() => {
+    let cancelled = false;
+    adminApi
+      .units()
+      .then((data) => {
+        if (!cancelled) setUnits(data.units.filter((unit) => unit.active));
+      })
+      .catch((unitsError) => {
+        if (!cancelled) setError(unitsError.message);
+      })
+      .finally(() => {
+        if (!cancelled) setUnitsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function create(event) {
     event.preventDefault();
@@ -2295,11 +2315,25 @@ function CreateUserModal({ onClose, onCreated }) {
           </label>
           <label>
             Unidade escolar
-            <input
+            <select
               value={form.school}
               onChange={(event) => update("school", event.target.value)}
-              placeholder="Opcional"
-            />
+              disabled={unitsLoading}
+            >
+              <option value="">
+                {unitsLoading ? "Carregando..." : "Todas as unidades"}
+              </option>
+              {units.map((unit) => (
+                <option key={unit.id} value={unit.name}>
+                  {unit.name}
+                </option>
+              ))}
+            </select>
+            {!unitsLoading && units.length === 0 && (
+              <small>
+                Nenhuma unidade ativa. Cadastre uma na aba Unidades.
+              </small>
+            )}
           </label>
         </div>
         {form.role === "staff" && (
