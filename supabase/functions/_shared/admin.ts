@@ -42,6 +42,14 @@ export async function requireStaff(req: Request, adminOnly = false) {
   return { supabase, user, profile }
 }
 
+// Unit a staff member is restricted to; null means every unit (admins, or staff without a unit).
+export function allowedSchool(profile: { role: string, school?: string | null }): string | null {
+  return profile.role === 'admin' ? null : (profile.school?.trim() || null)
+}
+
+// Pattern for a case-insensitive exact match with ilike (escapes the wildcards).
+export const exactLike = (value: string) => value.replace(/[\\%_]/g, (char) => `\\${char}`)
+
 // Years a staff member may see; null means unrestricted (admin).
 export function allowedYears(profile: { role: string, allowed_years?: number[] | null }): number[] | null {
   return profile.role === 'admin' ? null : (profile.allowed_years || [])

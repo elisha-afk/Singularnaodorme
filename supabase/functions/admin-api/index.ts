@@ -1,4 +1,4 @@
-import { allowedYears, audit, corsHeaders, jsonResponse, requireStaff } from '../_shared/admin.ts'
+import { allowedSchool, allowedYears, audit, corsHeaders, exactLike, jsonResponse, requireStaff } from '../_shared/admin.ts'
 import { BLOCK_DAYS, originState, TEMPORARY_BLOCKS } from '../_shared/blocks.ts'
 
 const reportFields = 'id,tracking_code,tipo,descricao,local,data_incidente,envolvidos,testemunhas,severidade,anonimo,nome,email,telefone,escola,destino,ano,suspeito,suspeito_tipo,motivo_suspeita,status,resposta,data_criacao,data_atualizacao,priority,assigned_to'
@@ -11,6 +11,7 @@ Deno.serve(async (req) => {
     const url = new URL(req.url)
     const action = url.searchParams.get('action') || 'dashboard'
     const years = allowedYears(profile)
+    const school = allowedSchool(profile)
 
     if (req.method === 'GET' && action === 'me') return jsonResponse({ profile, email: user.email })
 
@@ -42,6 +43,7 @@ Deno.serve(async (req) => {
       const count = (filters: Record<string, string> = {}) => {
         let query = supabase.from('relatos').select('id', { count: 'exact', head: true }).eq('suspeito', false)
         if (years) query = query.in('ano', years)
+        if (school) query = query.ilike('escola', exactLike(school))
         Object.entries(filters).forEach(([key, value]) => { query = query.eq(key, value) })
         return query
       }
@@ -49,6 +51,7 @@ Deno.serve(async (req) => {
         let query = supabase.from('relatos').select('id', { count: 'exact', head: true }).eq('suspeito', true)
         if (kind) query = query.eq('suspeito_tipo', kind)
         if (years) query = query.in('ano', years)
+        if (school) query = query.ilike('escola', exactLike(school))
         return query
       }
       await supabase.rpc('purge_origin_data')
@@ -63,6 +66,7 @@ Deno.serve(async (req) => {
       const pageSize = Math.min(50, Math.max(10, Number(url.searchParams.get('pageSize')) || 20))
       let query = supabase.from('relatos').select(reportFields, { count: 'exact' })
       if (years) query = query.in('ano', years)
+      if (school) query = query.ilike('escola', exactLike(school))
       // Possíveis ataques ficam numa fila separada da lista normal
       query = query.eq('suspeito', url.searchParams.get('suspeito') === 'true')
       const suspectKind = url.searchParams.get('tipo_suspeita')
@@ -88,6 +92,7 @@ Deno.serve(async (req) => {
       if (!id) return jsonResponse({ error: 'Relato não informado' }, 400)
       let reportQuery = supabase.from('relatos').select(reportFields).eq('id', id)
       if (years) reportQuery = reportQuery.in('ano', years)
+      if (school) reportQuery = reportQuery.ilike('escola', exactLike(school))
       const [reportResult, notesResult, responsesResult] = await Promise.all([
         reportQuery.single(),
         supabase.from('relato_notes').select('id,content,created_at,author_id,admin_profiles(name)').eq('relato_id', id).order('created_at', { ascending: false }),
@@ -109,6 +114,7 @@ Deno.serve(async (req) => {
 
       let findQuery = supabase.from('relatos').select('id,tracking_code,status,suspeito').eq('id', id)
       if (years) findQuery = findQuery.in('ano', years)
+      if (school) findQuery = findQuery.ilike('escola', exactLike(school))
       const { data: existingReport, error: findError } = await findQuery.maybeSingle()
 
       if (findError) throw findError
@@ -137,6 +143,7 @@ Deno.serve(async (req) => {
       }
       let updateQuery = supabase.from('relatos').update(changes).eq('id', body.id)
       if (years) updateQuery = updateQuery.in('ano', years)
+      if (school) updateQuery = updateQuery.ilike('escola', exactLike(school))
       const { data, error } = await updateQuery.select(reportFields).single()
       if (error) throw error
       await audit(supabase, user.id, 'report.updated', 'relato', body.id, changes)
@@ -149,6 +156,7 @@ Deno.serve(async (req) => {
       if (!body.relato_id || content.length < 2 || content.length > 5000) return jsonResponse({ error: 'Observação inválida' }, 400)
       let reportAccessQuery = supabase.from('relatos').select('id').eq('id', body.relato_id)
       if (years) reportAccessQuery = reportAccessQuery.in('ano', years)
+      if (school) reportAccessQuery = reportAccessQuery.ilike('escola', exactLike(school))
       const { data: accessibleReport } = await reportAccessQuery.maybeSingle()
       if (!accessibleReport) return jsonResponse({ error: 'Relato não encontrado' }, 404)
       const { data, error } = await supabase.from('relato_notes').insert({ relato_id: body.relato_id, author_id: user.id, content }).select('id,content,created_at,author_id').single()
@@ -163,6 +171,7 @@ Deno.serve(async (req) => {
       if (!body.relato_id) return jsonResponse({ error: 'Relato não informado' }, 400)
       let accessQuery = supabase.from('relatos').select('id,tracking_code,suspeito,origem_hash').eq('id', body.relato_id)
       if (years) accessQuery = accessQuery.in('ano', years)
+      if (school) accessQuery = accessQuery.ilike('escola', exactLike(school))
       const { data: target } = await accessQuery.maybeSingle()
       if (!target) return jsonResponse({ error: 'Relato não encontrado' }, 404)
       if (!target.suspeito) return jsonResponse({ error: 'Só é possível bloquear a origem de mensagens marcadas como ameaça ou ódio' }, 409)

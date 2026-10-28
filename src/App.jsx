@@ -4,7 +4,7 @@ import {
   HandHeart, Heart, Lock, Menu, MessageCircleWarning, Phone, Search, Send,
   ShieldCheck, Sparkles, Sun, Moon, UserRoundCheck, X,
 } from 'lucide-react'
-import { fetchOriginStatus, findReport, submitReport } from './supabase.js'
+import { fetchOriginStatus, fetchSchoolUnits, findReport, submitReport } from './supabase.js'
 import studentsSupportImage from './assets/students-support.jpg'
 import AdminApp from './Admin.jsx'
 
@@ -19,6 +19,7 @@ const initialReport = {
   envolvidos: '',
   testemunhas: '',
   severidade: '',
+  escola: '',
   ano: '',
   anonimo: true,
   nome: '',
@@ -187,6 +188,13 @@ function ReportPage() {
   const [trackingCode, setTrackingCode] = useState('')
   const [tracking, setTracking] = useState({ state: 'idle', message: '', data: null })
   const [origin, setOrigin] = useState({ blocked: false, warning: false, message: null })
+  const [units, setUnits] = useState({ state: 'loading', list: [] })
+
+  useEffect(() => {
+    fetchSchoolUnits()
+      .then(data => setUnits({ state: 'ready', list: data.units || [] }))
+      .catch(() => setUnits({ state: 'error', list: [] }))
+  }, [])
 
   // Avisa antes de preencher se o acesso está bloqueado ou se já houve um bloqueio anterior
   useEffect(() => {
@@ -213,6 +221,7 @@ function ReportPage() {
     const next = {}
     if (fields === 'all' || fields === 1) {
       if (!report.severidade) next.severidade = 'Selecione como você avalia a situação.'
+      if (!report.escola) next.escola = 'Selecione a sua unidade.'
       if (!report.ano) next.ano = 'Selecione o ano.'
     }
     if (fields === 'all' || fields === 2) {
@@ -300,6 +309,7 @@ function ReportPage() {
           {step === 1 && <section className="form-step">
             <div className="step-heading"><span>01</span><div><h2>Como podemos ajudar?</h2><p>{report.tipo === 'sugestao' ? 'Compartilhe uma ideia para melhorar os espaços, regras ou atividades da escola.' : 'Escolha o tipo de relato e como você percebe a gravidade.'}</p></div></div>
             <div className="type-tabs">{reportTypes.map(({ value, label }) => <button key={value} type="button" className={report.tipo === value ? 'active' : ''} onClick={() => selectType(value)}>{label}</button>)}</div>
+            <FormField field="escola" label="Em qual unidade você estuda?" error={errors.escola}><select value={report.escola} onChange={event => update('escola', event.target.value)} disabled={units.state === 'loading'}><option value="">{units.state === 'loading' ? 'Carregando unidades...' : 'Escolha a unidade'}</option>{units.list.map(unit => <option key={unit.id} value={unit.name}>{unit.name}</option>)}</select>{units.state === 'error' && <small>Não foi possível carregar as unidades. Atualize a página e tente novamente.</small>}</FormField>
             <FormField field="ano" label={report.tipo === 'sugestao' ? 'Para qual ano é a ideia?' : 'Em qual ano está o estudante envolvido?'} error={errors.ano}><select value={report.ano} onChange={event => update('ano', event.target.value)}><option value="">Escolha o ano</option><option value="1">1º ano</option><option value="2">2º ano</option><option value="3">3º ano</option></select></FormField>
             <FormField field="severidade" label={report.tipo === 'sugestao' ? 'Qual impacto essa ideia pode ter?' : 'Como você avalia essa situação?'} error={errors.severidade}><select value={report.severidade} onChange={event => update('severidade', event.target.value)}>{report.tipo === 'sugestao' ? <><option value="">Escolha uma opção</option><option value="leve">Pequeno — melhora um detalhe</option><option value="moderado">Médio — ajuda uma turma ou espaço</option><option value="grave">Alto — ajuda muitas pessoas</option><option value="critico">Urgente — resolve um risco ou problema sério</option></> : <><option value="">Escolha uma opção</option><option value="leve">Leve — me incomodou</option><option value="moderado">Moderada — está se repetindo</option><option value="grave">Grave — causou medo ou dano</option><option value="critico">Crítica — existe risco imediato</option></>}</select></FormField>
           </section>}

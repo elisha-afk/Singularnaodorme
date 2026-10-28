@@ -13,6 +13,7 @@ interface RelatoData {
   envolvidos?: string
   testemunhas?: string
   severidade: string
+  escola: string
   ano: number
   anonimo: boolean
   nome?: string
@@ -61,6 +62,17 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseKey)
+
+    // A unidade precisa ser uma das unidades ativas cadastradas; grava o nome oficial
+    const { data: activeUnits } = await supabase.from('school_units').select('name').eq('active', true)
+    const unit = (activeUnits || []).find((entry) => entry.name.trim().toLowerCase() === String(data.escola).trim().toLowerCase())
+    if (!unit) {
+      return new Response(
+        JSON.stringify({ error: ['Unidade inválida. Escolha uma das unidades da lista.'] }),
+        { status: 400, headers: corsHeaders }
+      )
+    }
+    sanitizedData.escola = unit.name
 
     // Limite de envios por origem: guarda apenas um hash com sal, nunca o IP
     const ip = (req.headers.get('cf-connecting-ip') || req.headers.get('x-forwarded-for') || 'desconhecido').split(',')[0].trim()
@@ -179,6 +191,10 @@ function validateRelato(data: RelatoData) {
     errors.push('Severidade inválida')
   }
 
+  if (!String(data.escola || '').trim()) {
+    errors.push('Unidade é obrigatória')
+  }
+
   if (![1, 2, 3].includes(Number(data.ano))) {
     errors.push('Ano inválido')
   }
@@ -211,6 +227,7 @@ function sanitizeRelato(data: RelatoData) {
     envolvidos: data.envolvidos?.trim().substring(0, 1000),
     testemunhas: data.testemunhas?.trim().substring(0, 1000),
     severidade: data.severidade?.trim().toLowerCase(),
+    escola: '',
     ano: Number(data.ano),
     anonimo: data.anonimo === true,
     nome: data.anonimo ? null : data.nome?.trim().substring(0, 255),
