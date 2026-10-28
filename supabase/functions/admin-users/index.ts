@@ -3,6 +3,16 @@ import { audit, corsHeaders, jsonResponse, requireStaff } from '../_shared/admin
 
 const parseYears = (value: unknown) => Array.isArray(value) ? [...new Set(value.map(Number).filter((year) => [1, 2, 3].includes(year)))].sort() : []
 
+// A unidade só pode ser uma das unidades ativas cadastradas; vazio = todas as unidades.
+async function resolveSchool(supabase: ReturnType<typeof import('../_shared/admin.ts').serviceClient>, value: unknown) {
+  const wanted = String(value || '').trim()
+  if (!wanted) return { school: null as string | null }
+  const { data, error } = await supabase.from('school_units').select('name').eq('active', true)
+  if (error) throw error
+  const match = (data || []).find((unit) => unit.name.trim().toLowerCase() === wanted.toLowerCase())
+  return match ? { school: match.name as string | null } : { error: 'Escolha uma unidade ativa cadastrada na aba Unidades' }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
@@ -28,9 +38,12 @@ Deno.serve(async (req) => {
       const allowed_years = role === 'admin' ? [] : parseYears(body.allowed_years)
       if (!/^\S+@\S+\.\S+$/.test(email) || name.length < 3 || password.length < 10) return jsonResponse({ error: 'Informe nome, e-mail válido e senha temporária com ao menos 10 caracteres' }, 400)
 
+      const unit = await resolveSchool(supabase, body.school)
+      if ('error' in unit) return jsonResponse({ error: unit.error }, 400)
+
       const { data: created, error: createError } = await supabase.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { name } })
       if (createError || !created.user) return jsonResponse({ error: createError?.message || 'Não foi possível criar o acesso' }, 400)
-      const { data: profile, error: profileError } = await supabase.from('admin_profiles').insert({ id: created.user.id, name, role, allowed_years, school: String(body.school || '').trim() || null, must_change_password: true }).select().single()
+      const { data: profile, error: profileError } = await supabase.from('admin_profiles').insert({ id: created.user.id, name, role, allowed_years, school: unit.school, must_change_password: true }).select().single()
       if (profileError) {
         await supabase.auth.admin.deleteUser(created.user.id)
         throw profileError
@@ -48,7 +61,11 @@ Deno.serve(async (req) => {
       if (['admin', 'staff'].includes(body.role)) changes.role = body.role
       if (Array.isArray(body.allowed_years)) changes.allowed_years = parseYears(body.allowed_years)
       if (typeof body.active === 'boolean') changes.active = body.active
-      if (typeof body.school === 'string') changes.school = body.school.trim() || null
+      if (typeof body.school === 'string') {
+        const unit = await resolveSchool(supabase, body.school)
+        if ('error' in unit) return jsonResponse({ error: unit.error }, 400)
+        changes.school = unit.school
+      }
       if (typeof body.password === 'string' && body.password.length >= 10) {
         const { error } = await supabase.auth.admin.updateUserById(body.id, { password: body.password })
         if (error) throw error
