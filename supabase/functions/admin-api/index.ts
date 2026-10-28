@@ -1,5 +1,5 @@
 import { allowedYears, audit, corsHeaders, jsonResponse, requireStaff } from '../_shared/admin.ts'
-import { BLOCK_DAYS, originState } from '../_shared/blocks.ts'
+import { BLOCK_DAYS, originState, TEMPORARY_BLOCKS } from '../_shared/blocks.ts'
 
 const reportFields = 'id,tracking_code,tipo,descricao,local,data_incidente,envolvidos,testemunhas,severidade,anonimo,nome,email,telefone,escola,destino,ano,suspeito,suspeito_tipo,motivo_suspeita,status,resposta,data_criacao,data_atualizacao,priority,assigned_to'
 
@@ -118,7 +118,7 @@ Deno.serve(async (req) => {
       const { error: deleteError } = await supabase.from('relatos').delete().eq('id', id)
       if (deleteError) throw deleteError
 
-      await audit(supabase, user.id, 'report.deleted', 'relato', id, { tracking_code: existingReport.tracking_code })
+      await audit(supabase, user.id, 'report.deleted', 'relato', id, { tracking_code: existingReport.tracking_code, suspeito: existingReport.suspeito })
       return jsonResponse({ success: true })
     }
 
@@ -171,9 +171,9 @@ Deno.serve(async (req) => {
       const state = await originState(supabase, target.origem_hash)
       if (state.blocked) return jsonResponse({ error: 'Esta origem já está bloqueada' }, 409)
 
-      // 1º bloqueio: 30 dias. A partir do 2º: definitivo, só um administrador desfaz.
+      // 1º e 2º bloqueios: 7 dias cada. A partir do 3º: definitivo, só um administrador desfaz.
       const blockNumber = state.previousBlocks + 1
-      const expiresAt = blockNumber === 1 ? new Date(Date.now() + BLOCK_DAYS * 24 * 60 * 60 * 1000).toISOString() : null
+      const expiresAt = blockNumber <= TEMPORARY_BLOCKS ? new Date(Date.now() + BLOCK_DAYS * 24 * 60 * 60 * 1000).toISOString() : null
       const { data: block, error } = await supabase.from('blocked_origins').insert({
         origin_hash: target.origem_hash,
         block_number: blockNumber,
@@ -216,8 +216,8 @@ Deno.serve(async (req) => {
       }
 
       if (body.op === 'renew') {
-        // Só o 1º bloqueio é renovável; o definitivo não tem prazo para renovar
-        if (block.cancelled || block.block_number !== 1 || !block.expires_at) return jsonResponse({ error: 'Este bloqueio não pode ser renovado' }, 409)
+        // Só os bloqueios temporários (1º e 2º) são renováveis; o definitivo não tem prazo para renovar
+        if (block.cancelled || block.block_number > TEMPORARY_BLOCKS || !block.expires_at) return jsonResponse({ error: 'Este bloqueio não pode ser renovado' }, 409)
         const base = Math.max(Date.now(), new Date(block.expires_at).getTime())
         const expiresAt = new Date(base + BLOCK_DAYS * 24 * 60 * 60 * 1000).toISOString()
         const { error } = await supabase.from('blocked_origins').update({ expires_at: expiresAt }).eq('id', body.id)

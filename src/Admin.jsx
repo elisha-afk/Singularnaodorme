@@ -1455,7 +1455,7 @@ function BlocksView() {
     const text =
       op === "unblock"
         ? "Desbloquear esta origem? Ela poderá voltar a enviar denúncias."
-        : "Renovar este bloqueio por mais 30 dias?";
+        : "Renovar este bloqueio por mais 7 dias?";
     if (!window.confirm(text)) return;
     try {
       await adminApi.updateBlock(block.id, op);
@@ -1505,7 +1505,7 @@ function BlocksView() {
                 <div>
                   <span>Bloqueio</span>
                   <strong>
-                    {block.block_number}º{block.block_number > 1 ? " (definitivo)" : ""}
+                    {block.block_number}º{block.expires_at ? "" : " (definitivo)"}
                   </strong>
                 </div>
                 <div>
@@ -1526,12 +1526,12 @@ function BlocksView() {
                   {block.report_code && <small>Denúncia #{block.report_code}</small>}
                 </div>
                 <div className="admin-user-actions">
-                  {!block.cancelled && block.block_number === 1 && block.expires_at && (
+                  {!block.cancelled && block.block_number <= 2 && block.expires_at && (
                     <button
                       className="admin-secondary-button"
                       onClick={() => change(block, "renew")}
                     >
-                      Renovar 30 dias
+                      Renovar 7 dias
                     </button>
                   )}
                   {!block.cancelled && (
