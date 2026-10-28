@@ -1415,7 +1415,7 @@ function ReportDetails({ report }) {
       {!report.anonimo && (
         <>
           <Detail label="E-mail" value={report.email} />
-          <Detail label="Telefone" value={report.telefone} />
+          {report.telefone && <Detail label="Telefone" value={report.telefone} />}
         </>
       )}
       {report.escola && <Detail label="Unidade" value={report.escola} />}

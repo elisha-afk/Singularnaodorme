@@ -18,7 +18,6 @@ interface RelatoData {
   anonimo: boolean
   nome?: string
   email?: string
-  telefone?: string
 }
 
 // CORS headers
@@ -206,9 +205,6 @@ function validateRelato(data: RelatoData) {
     if (!data.email || !isValidEmail(data.email)) {
       errors.push('Email inválido')
     }
-    if (!data.telefone || !isValidPhone(data.telefone)) {
-      errors.push('Telefone inválido')
-    }
   }
 
   return {
@@ -232,7 +228,7 @@ function sanitizeRelato(data: RelatoData) {
     anonimo: data.anonimo === true,
     nome: data.anonimo ? null : data.nome?.trim().substring(0, 255),
     email: data.anonimo ? null : data.email?.trim().toLowerCase(),
-    telefone: data.anonimo ? null : data.telefone?.replace(/\D/g, ''),
+    telefone: null,
     destino: data.tipo === 'sugestao' ? 'orientacao' : 'coordenacao',
   }
 }
@@ -240,12 +236,6 @@ function sanitizeRelato(data: RelatoData) {
 // Validar email
 function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
-}
-
-// Validar telefone
-function isValidPhone(phone: string): boolean {
-  const cleaned = phone.replace(/\D/g, '')
-  return cleaned.length === 10 || cleaned.length === 11
 }
 
 // Gerar código de rastreamento
