@@ -1451,6 +1451,21 @@ function BlocksView() {
     load();
   }, []);
 
+  async function removeBlock(block) {
+    if (
+      !window.confirm(
+        "Excluir este bloqueio do histórico?\n\nO registro será apagado e deixará de contar como bloqueio anterior dessa origem."
+      )
+    )
+      return;
+    try {
+      await adminApi.deleteBlock(block.id);
+      load();
+    } catch (error) {
+      setMessage(error.message);
+    }
+  }
+
   async function change(block, op) {
     const text =
       op === "unblock"
@@ -1540,6 +1555,14 @@ function BlocksView() {
                       onClick={() => change(block, "unblock")}
                     >
                       Desbloquear
+                    </button>
+                  )}
+                  {block.cancelled && (
+                    <button
+                      className="admin-danger-button"
+                      onClick={() => removeBlock(block)}
+                    >
+                      Excluir
                     </button>
                   )}
                 </div>

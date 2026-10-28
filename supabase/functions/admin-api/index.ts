@@ -276,6 +276,20 @@ Deno.serve(async (req) => {
       return jsonResponse({ unit: data })
     }
 
+    // Exclui do histórico um bloqueio que já foi desfeito (desbloqueado)
+    if (req.method === 'DELETE' && action === 'block') {
+      if (profile.role !== 'admin') return jsonResponse({ error: 'Ação exclusiva de administradores' }, 403)
+      const id = url.searchParams.get('id')
+      if (!id) return jsonResponse({ error: 'Bloqueio não informado' }, 400)
+      const { data: block } = await supabase.from('blocked_origins').select('id,block_number,cancelled,report_code').eq('id', id).maybeSingle()
+      if (!block) return jsonResponse({ error: 'Bloqueio não encontrado' }, 404)
+      if (!block.cancelled) return jsonResponse({ error: 'Só é possível excluir bloqueios que já foram desbloqueados' }, 409)
+      const { error } = await supabase.from('blocked_origins').delete().eq('id', id)
+      if (error) throw error
+      await audit(supabase, user.id, 'origin.deleted', 'blocked_origin', id, { block_number: block.block_number, report_code: block.report_code })
+      return jsonResponse({ success: true })
+    }
+
     if (req.method === 'DELETE' && action === 'unit') {
       if (profile.role !== 'admin') return jsonResponse({ error: 'Ação exclusiva de administradores' }, 403)
       const id = url.searchParams.get('id')
