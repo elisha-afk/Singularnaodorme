@@ -70,13 +70,13 @@ const roleLabels = {
   admin: "Administrador",
   staff: "Equipe",
 };
-const yearLabels = { 1: "1º ano", 2: "2º ano", 3: "3º ano" };
+const yearLabels = { 1: "1ª série", 2: "2ª série", 3: "3ª série" };
 const yearOptions = ["1", "2", "3"];
 const accessLabel = (user) =>
   user.role === "admin"
-    ? "Todos os anos"
+    ? "Todas as séries"
     : (user.allowed_years || []).map((year) => yearLabels[year]).join(", ") ||
-      "Nenhum ano";
+      "Nenhuma série";
 const destinationLabels = {
   coordenacao: "Coordenação",
   orientacao: "Orientação",
@@ -883,7 +883,7 @@ function ReportsView({ focusThreats = 0 }) {
               }}
             />
             <SelectFilter
-              label="Ano"
+              label="Série"
               value={filters.ano}
               options={yearLabels}
               onChange={(value) => {
@@ -928,7 +928,7 @@ function ReportsView({ focusThreats = 0 }) {
                     <th>Relato</th>
                     <th>Categoria</th>
                     <th>Destino</th>
-                    <th>Ano</th>
+                    <th>Série</th>
                     <th>Status</th>
                     <th>Gravidade</th>
                     <th>Prioridade</th>
@@ -1044,7 +1044,7 @@ function ReportRow({ report, onOpen }) {
         </span>
       </td>
       <td>{destinationLabels[report.destino] || report.destino}</td>
-      <td>{yearLabels[report.ano] || "Sem ano"}</td>
+      <td>{yearLabels[report.ano] || "Sem série"}</td>
       <td>
         <span className={`admin-status ${report.status}`}>
           {statusLabels[report.status] || report.status}
@@ -1389,7 +1389,7 @@ function ReportDetails({ report }) {
       />
       <Detail label="Gravidade" value={severityLabels[report.severidade]} />
       <Detail label="Equipe responsável" value={destinationLabels[report.destino] || report.destino} />
-      <Detail label="Ano" value={yearLabels[report.ano] || "Não informado"} />
+      <Detail label="Série" value={yearLabels[report.ano] || "Não informado"} />
       <Detail
         label="Identificação"
         value={report.anonimo ? "Relato anônimo" : report.nome}
@@ -2174,7 +2174,7 @@ function YearPermissions({ value, onChange }) {
     );
   return (
     <fieldset className="admin-year-permissions">
-      <legend>Anos autorizados</legend>
+      <legend>Séries autorizadas</legend>
       {yearOptions.map((year) => (
         <label key={year} className="admin-checkbox">
           <input
@@ -2185,7 +2185,7 @@ function YearPermissions({ value, onChange }) {
           {yearLabels[year]}
         </label>
       ))}
-      <small>O usuário só vê denúncias dos anos marcados.</small>
+      <small>O usuário só vê denúncias das séries marcadas.</small>
     </fieldset>
   );
 }
@@ -2219,7 +2219,7 @@ function EditAccessModal({ user, onClose, onUpdated }) {
         <header>
           <div>
             <span className="admin-kicker">Permissões</span>
-            <h2>Anos de {user.name}</h2>
+            <h2>Séries de {user.name}</h2>
           </div>
           <button type="button" onClick={onClose} aria-label="Fechar">
             <X />
