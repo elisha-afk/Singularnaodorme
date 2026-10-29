@@ -1,5 +1,6 @@
 import { allowedSchool, allowedYears, audit, corsHeaders, exactLike, jsonResponse, requireStaff } from '../_shared/admin.ts'
 import { BLOCK_DAYS, originState, TEMPORARY_BLOCKS } from '../_shared/blocks.ts'
+import { isLevel, LEVEL_LABELS } from '../_shared/levels.ts'
 
 const reportFields = 'id,tracking_code,tipo,descricao,local,data_incidente,envolvidos,testemunhas,severidade,anonimo,nome,email,telefone,escola,destino,ano,suspeito,suspeito_tipo,motivo_suspeita,status,resposta,data_criacao,data_atualizacao,priority,assigned_to'
 
@@ -24,7 +25,7 @@ Deno.serve(async (req) => {
     if (req.method === 'GET' && action === 'units') {
       const { data, error } = await supabase
         .from('school_units')
-        .select('id,name,category,active,created_at,updated_at')
+        .select('id,name,category,level,active,created_at,updated_at')
         .order('active', { ascending: false })
         .order('category')
         .order('name')
@@ -242,13 +243,13 @@ Deno.serve(async (req) => {
       if (profile.role !== 'admin') return jsonResponse({ error: 'Ação exclusiva de administradores' }, 403)
       const body = await req.json()
       const name = String(body.name || '').trim()
-      const category = String(body.category || '').trim()
-      if (name.length < 2 || category.length < 2) return jsonResponse({ error: 'Informe nome e categoria da unidade' }, 400)
+      if (name.length < 2) return jsonResponse({ error: 'Informe o nome da unidade' }, 400)
+      if (!isLevel(body.level)) return jsonResponse({ error: 'Escolha se a unidade é de Ensino Fundamental ou Ensino Médio' }, 400)
 
       const { data, error } = await supabase
         .from('school_units')
-        .insert({ name, category, created_by: user.id })
-        .select('id,name,category,active,created_at,updated_at')
+        .insert({ name, level: body.level, category: LEVEL_LABELS[body.level], created_by: user.id })
+        .select('id,name,category,level,active,created_at,updated_at')
         .single()
       if (error) {
         if (String(error.message).toLowerCase().includes('duplicate')) return jsonResponse({ error: 'Já existe uma unidade com esse nome' }, 409)
@@ -269,7 +270,7 @@ Deno.serve(async (req) => {
         .from('school_units')
         .update(changes)
         .eq('id', body.id)
-        .select('id,name,category,active,created_at,updated_at')
+        .select('id,name,category,level,active,created_at,updated_at')
         .single()
       if (error) throw error
       await audit(supabase, user.id, 'unit.updated', 'school_unit', body.id, changes)

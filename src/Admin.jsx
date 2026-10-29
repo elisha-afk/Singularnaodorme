@@ -70,13 +70,61 @@ const roleLabels = {
   admin: "Administrador",
   staff: "Equipe",
 };
-const yearLabels = { 1: "1ª série", 2: "2ª série", 3: "3ª série" };
-const yearOptions = ["1", "2", "3"];
-const accessLabel = (user) =>
+// Ensino Médio: 1ª a 3ª série. Ensino Fundamental: 1º ao 9º ano.
+const levelLabels = { medio: "Ensino Médio", fundamental: "Ensino Fundamental" };
+const levelYears = {
+  medio: [1, 2, 3],
+  fundamental: [1, 2, 3, 4, 5, 6, 7, 8, 9],
+};
+const yearLabel = (year, level) =>
+  level === "fundamental"
+    ? `${year}º ano`
+    : level === "medio"
+      ? `${year}ª série`
+      : year <= 3
+        ? `${year}ª série / ${year}º ano`
+        : `${year}º ano`;
+const yearFilterLabels = Object.fromEntries(
+  levelYears.fundamental.map((year) => [year, yearLabel(year)]),
+);
+
+// Etapa de cada unidade (cache da sessão); quem cadastra uma unidade nova zera o cache.
+let unitsCache = null;
+let unitsRequest = null;
+const resetUnitsCache = () => {
+  unitsCache = null;
+  unitsRequest = null;
+};
+function useUnits() {
+  const [units, setUnits] = useState(unitsCache || []);
+  useEffect(() => {
+    if (unitsCache) return;
+    // Uma única consulta para todos os componentes que pedirem ao mesmo tempo
+    unitsRequest =
+      unitsRequest ||
+      adminApi.units().then((data) => {
+        unitsCache = data.units;
+        return data.units;
+      });
+    unitsRequest.then(setUnits).catch(() => {
+      unitsRequest = null;
+    });
+  }, []);
+  const levelOf = (name) =>
+    units.find(
+      (unit) =>
+        unit.name.trim().toLowerCase() ===
+        String(name || "").trim().toLowerCase(),
+    )?.level;
+  return { units, levelOf };
+}
+
+const accessLabel = (user, levelOf = () => undefined) =>
   user.role === "admin"
-    ? "Todas as séries"
-    : (user.allowed_years || []).map((year) => yearLabels[year]).join(", ") ||
-      "Nenhuma série";
+    ? "Todas as séries e anos"
+    : (user.allowed_years || [])
+        .map((year) => yearLabel(year, levelOf(user.school)))
+        .join(", ") || "Nenhuma série ou ano";
 const destinationLabels = {
   coordenacao: "Coordenação",
   orientacao: "Orientação",
@@ -883,9 +931,9 @@ function ReportsView({ focusThreats = 0 }) {
               }}
             />
             <SelectFilter
-              label="Série"
+              label="Série/ano"
               value={filters.ano}
-              options={yearLabels}
+              options={yearFilterLabels}
               onChange={(value) => {
                 setPage(1);
                 setFilters((current) => ({ ...current, ano: value }));
@@ -928,7 +976,7 @@ function ReportsView({ focusThreats = 0 }) {
                     <th>Relato</th>
                     <th>Categoria</th>
                     <th>Destino</th>
-                    <th>Série</th>
+                    <th>Série/ano</th>
                     <th>Status</th>
                     <th>Gravidade</th>
                     <th>Prioridade</th>
@@ -1024,6 +1072,7 @@ function SelectFilter({ label, value, options, onChange }) {
 }
 
 function ReportRow({ report, onOpen }) {
+  const { levelOf } = useUnits();
   return (
     <tr onClick={onOpen}>
       <td>
@@ -1044,7 +1093,7 @@ function ReportRow({ report, onOpen }) {
         </span>
       </td>
       <td>{destinationLabels[report.destino] || report.destino}</td>
-      <td>{yearLabels[report.ano] || "Sem série"}</td>
+      <td>{report.ano ? yearLabel(report.ano, levelOf(report.escola)) : "Sem série"}</td>
       <td>
         <span className={`admin-status ${report.status}`}>
           {statusLabels[report.status] || report.status}
@@ -1376,6 +1425,7 @@ function ReportDrawer({ id, onClose, onUpdated }) {
 }
 
 function ReportDetails({ report }) {
+  const { levelOf } = useUnits();
   return (
     <div className="admin-report-details">
       <Detail label="Descrição" value={report.descricao} wide />
@@ -1389,7 +1439,10 @@ function ReportDetails({ report }) {
       />
       <Detail label="Gravidade" value={severityLabels[report.severidade]} />
       <Detail label="Equipe responsável" value={destinationLabels[report.destino] || report.destino} />
-      <Detail label="Série" value={yearLabels[report.ano] || "Não informado"} />
+      <Detail
+        label="Série/ano"
+        value={report.ano ? yearLabel(report.ano, levelOf(report.escola)) : "Não informado"}
+      />
       <Detail
         label="Identificação"
         value={report.anonimo ? "Relato anônimo" : report.nome}
@@ -1577,7 +1630,7 @@ function BlocksView() {
 
 function UnitsView() {
   const [units, setUnits] = useState([]);
-  const [form, setForm] = useState({ name: "", category: "" });
+  const [form, setForm] = useState({ name: "", level: "" });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ type: "", text: "" });
@@ -1604,7 +1657,8 @@ function UnitsView() {
     setSaving(true);
     try {
       await adminApi.createUnit(form);
-      setForm({ name: "", category: "" });
+      setForm({ name: "", level: "" });
+      resetUnitsCache();
       setMessage({ type: "success", text: "Unidade cadastrada com sucesso." });
       await load();
     } catch (error) {
@@ -1662,15 +1716,18 @@ function UnitsView() {
             />
           </label>
           <label>
-            Categoria
-            <input
-              value={form.category}
+            Etapa de ensino
+            <select
+              value={form.level}
               onChange={(event) =>
-                setForm((current) => ({ ...current, category: event.target.value }))
+                setForm((current) => ({ ...current, level: event.target.value }))
               }
-              placeholder="Ex.: Fundamental I"
               required
-            />
+            >
+              <option value="">Escolha a etapa</option>
+              <option value="medio">Ensino Médio (1ª a 3ª série)</option>
+              <option value="fundamental">Ensino Fundamental (1º ao 9º ano)</option>
+            </select>
           </label>
           <button className="admin-primary-button" disabled={saving}>
             <Plus />
@@ -1696,7 +1753,10 @@ function UnitsView() {
               <article className="admin-unit-row" key={unit.id}>
                 <div>
                   <strong>{unit.name}</strong>
-                  <small>{unit.category}</small>
+                  <small>
+                    {levelLabels[unit.level] || unit.category} ·{" "}
+                    {unit.level === "fundamental" ? "1º ao 9º ano" : "1ª a 3ª série"}
+                  </small>
                 </div>
                 <span className={unit.active ? "user-active" : "user-inactive"}>
                   {unit.active ? "Ativa" : "Inativa"}
@@ -1864,6 +1924,7 @@ function ResponsePanel({
 }
 
 function UsersView({ currentUser }) {
+  const { levelOf } = useUnits();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -1936,7 +1997,7 @@ function UsersView({ currentUser }) {
               </div>
               <div>
                 <span>Acesso</span>
-                <strong>{accessLabel(user)}</strong>
+                <strong>{accessLabel(user, levelOf)}</strong>
               </div>
               <div>
                 <span>Unidade</span>
@@ -2167,30 +2228,35 @@ function ResetPasswordModal({ user, onClose, onUpdated }) {
   );
 }
 
-function YearPermissions({ value, onChange }) {
+function YearPermissions({ value, onChange, level }) {
   const toggle = (year) =>
     onChange(
       value.includes(year) ? value.filter((y) => y !== year) : [...value, year],
     );
   return (
     <fieldset className="admin-year-permissions">
-      <legend>Séries autorizadas</legend>
-      {yearOptions.map((year) => (
+      <legend>
+        {level === "fundamental" ? "Anos autorizados" : "Séries autorizadas"}
+      </legend>
+      {(levelYears[level] || levelYears.medio).map((year) => (
         <label key={year} className="admin-checkbox">
           <input
             type="checkbox"
-            checked={value.includes(Number(year))}
-            onChange={() => toggle(Number(year))}
+            checked={value.includes(year)}
+            onChange={() => toggle(year)}
           />
-          {yearLabels[year]}
+          {yearLabel(year, level || "medio")}
         </label>
       ))}
-      <small>O usuário só vê denúncias das séries marcadas.</small>
+      <small>
+        O usuário só vê denúncias {level === "fundamental" ? "dos anos marcados" : "das séries marcadas"}.
+      </small>
     </fieldset>
   );
 }
 
 function EditAccessModal({ user, onClose, onUpdated }) {
+  const { levelOf } = useUnits();
   const [years, setYears] = useState(user.allowed_years || []);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -2219,13 +2285,17 @@ function EditAccessModal({ user, onClose, onUpdated }) {
         <header>
           <div>
             <span className="admin-kicker">Permissões</span>
-            <h2>Séries de {user.name}</h2>
+            <h2>Séries e anos de {user.name}</h2>
           </div>
           <button type="button" onClick={onClose} aria-label="Fechar">
             <X />
           </button>
         </header>
-        <YearPermissions value={years} onChange={setYears} />
+        <YearPermissions
+          value={years}
+          onChange={setYears}
+          level={levelOf(user.school) || "medio"}
+        />
         {error && <div className="admin-error">{error}</div>}
         <footer>
           <button
@@ -2340,15 +2410,26 @@ function CreateUserModal({ onClose, onCreated }) {
             Unidade escolar
             <select
               value={form.school}
-              onChange={(event) => update("school", event.target.value)}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  school: event.target.value,
+                  allowed_years: [],
+                }))
+              }
               disabled={unitsLoading}
+              required={form.role === "staff"}
             >
               <option value="">
-                {unitsLoading ? "Carregando..." : "Todas as unidades"}
+                {unitsLoading
+                  ? "Carregando..."
+                  : form.role === "staff"
+                    ? "Escolha a unidade"
+                    : "Todas as unidades"}
               </option>
               {units.map((unit) => (
                 <option key={unit.id} value={unit.name}>
-                  {unit.name}
+                  {unit.name} ({levelLabels[unit.level] || unit.category})
                 </option>
               ))}
             </select>
@@ -2359,11 +2440,18 @@ function CreateUserModal({ onClose, onCreated }) {
             )}
           </label>
         </div>
-        {form.role === "staff" && (
+        {form.role === "staff" && form.school && (
           <YearPermissions
             value={form.allowed_years}
             onChange={(years) => update("allowed_years", years)}
+            level={units.find((unit) => unit.name === form.school)?.level}
           />
+        )}
+        {form.role === "staff" && !form.school && (
+          <small>
+            Escolha a unidade para definir as séries (Ensino Médio) ou os anos
+            (Ensino Fundamental) que a pessoa poderá ver.
+          </small>
         )}
         <label>
           Senha temporária

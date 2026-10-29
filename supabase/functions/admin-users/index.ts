@@ -1,16 +1,27 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { audit, corsHeaders, jsonResponse, requireStaff } from '../_shared/admin.ts'
+import { LEVEL_LABELS, yearsForLevel } from '../_shared/levels.ts'
 
-const parseYears = (value: unknown) => Array.isArray(value) ? [...new Set(value.map(Number).filter((year) => [1, 2, 3].includes(year)))].sort() : []
+const parseYears = (value: unknown) => Array.isArray(value) ? [...new Set(value.map(Number).filter((year) => [1, 2, 3, 4, 5, 6, 7, 8, 9].includes(year)))].sort() : []
 
 // A unidade só pode ser uma das unidades ativas cadastradas; vazio = todas as unidades.
-async function resolveSchool(supabase: ReturnType<typeof import('../_shared/admin.ts').serviceClient>, value: unknown) {
+async function resolveSchool(supabase: ReturnType<typeof import('../_shared/admin.ts').serviceClient>, value: unknown, onlyActive = true) {
   const wanted = String(value || '').trim()
-  if (!wanted) return { school: null as string | null }
-  const { data, error } = await supabase.from('school_units').select('name').eq('active', true)
+  if (!wanted) return { school: null as string | null, level: null as string | null }
+  let unitsQuery = supabase.from('school_units').select('name,level')
+  if (onlyActive) unitsQuery = unitsQuery.eq('active', true)
+  const { data, error } = await unitsQuery
   if (error) throw error
   const match = (data || []).find((unit) => unit.name.trim().toLowerCase() === wanted.toLowerCase())
-  return match ? { school: match.name as string | null } : { error: 'Escolha uma unidade ativa cadastrada na aba Unidades' }
+  return match ? { school: match.name as string | null, level: match.level as string | null } : { error: 'Escolha uma unidade ativa cadastrada na aba Unidades' }
+}
+
+// Séries/anos permitidos dependem da etapa da unidade (Médio: 1ª a 3ª série; Fundamental: 1º ao 9º ano).
+function yearsError(years: number[], level: string | null) {
+  const allowed = yearsForLevel(level)
+  if (years.every((year) => allowed.includes(year))) return null
+  const stage = level && level in LEVEL_LABELS ? LEVEL_LABELS[level as keyof typeof LEVEL_LABELS] : 'Ensino Médio'
+  return `Esta unidade (${stage}) só aceita as séries ou anos de 1 a ${allowed[allowed.length - 1]}`
 }
 
 Deno.serve(async (req) => {
@@ -40,6 +51,9 @@ Deno.serve(async (req) => {
 
       const unit = await resolveSchool(supabase, body.school)
       if ('error' in unit) return jsonResponse({ error: unit.error }, 400)
+      if (role === 'staff' && !unit.school) return jsonResponse({ error: 'Escolha a unidade da equipe para definir as séries ou anos' }, 400)
+      const createYearsError = yearsError(allowed_years, unit.level)
+      if (createYearsError) return jsonResponse({ error: createYearsError }, 400)
 
       const { data: created, error: createError } = await supabase.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { name } })
       if (createError || !created.user) return jsonResponse({ error: createError?.message || 'Não foi possível criar o acesso' }, 400)
@@ -61,10 +75,24 @@ Deno.serve(async (req) => {
       if (['admin', 'staff'].includes(body.role)) changes.role = body.role
       if (Array.isArray(body.allowed_years)) changes.allowed_years = parseYears(body.allowed_years)
       if (typeof body.active === 'boolean') changes.active = body.active
+      let unitLevel: string | null = null
       if (typeof body.school === 'string') {
         const unit = await resolveSchool(supabase, body.school)
         if ('error' in unit) return jsonResponse({ error: unit.error }, 400)
         changes.school = unit.school
+        unitLevel = unit.level
+      }
+      // Séries/anos precisam caber na etapa da unidade (a nova, se mudou; senão a atual do usuário)
+      if (changes.allowed_years || typeof body.school === 'string') {
+        const { data: current } = await supabase.from('admin_profiles').select('school,allowed_years,role').eq('id', body.id).maybeSingle()
+        if (!current) return jsonResponse({ error: 'Usuário não encontrado' }, 404)
+        if (typeof body.school !== 'string') {
+          const existing = await resolveSchool(supabase, current.school, false)
+          unitLevel = 'error' in existing ? null : existing.level
+        }
+        const effectiveYears = (changes.allowed_years as number[] | undefined) ?? (current.allowed_years as number[] | null) ?? []
+        const patchYearsError = current.role === 'admin' ? null : yearsError(effectiveYears, unitLevel)
+        if (patchYearsError) return jsonResponse({ error: patchYearsError }, 400)
       }
       if (typeof body.password === 'string' && body.password.length >= 10) {
         const { error } = await supabase.auth.admin.updateUserById(body.id, { password: body.password })

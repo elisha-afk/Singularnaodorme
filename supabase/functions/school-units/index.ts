@@ -8,7 +8,7 @@ Deno.serve(async (req) => {
     const supabase = serviceClient()
     const { data, error } = await supabase
       .from('school_units')
-      .select('id,name,category')
+      .select('id,name,category,level')
       .eq('active', true)
       .order('category')
       .order('name')

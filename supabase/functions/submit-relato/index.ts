@@ -4,6 +4,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { analyzeMessage, hashOrigin, RATE_LIMIT } from '../_shared/abuse.ts'
 import { BLOCKED_MESSAGE, originState } from '../_shared/blocks.ts'
+import { yearsForLevel } from '../_shared/levels.ts'
 
 interface RelatoData {
   tipo: string
@@ -63,11 +64,17 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey)
 
     // A unidade precisa ser uma das unidades ativas cadastradas; grava o nome oficial
-    const { data: activeUnits } = await supabase.from('school_units').select('name').eq('active', true)
+    const { data: activeUnits } = await supabase.from('school_units').select('name,level').eq('active', true)
     const unit = (activeUnits || []).find((entry) => entry.name.trim().toLowerCase() === String(data.escola).trim().toLowerCase())
     if (!unit) {
       return new Response(
         JSON.stringify({ error: ['Unidade inválida. Escolha uma das unidades da lista.'] }),
+        { status: 400, headers: corsHeaders }
+      )
+    }
+    if (!yearsForLevel(unit.level).includes(sanitizedData.ano)) {
+      return new Response(
+        JSON.stringify({ error: ['Série ou ano inválido para a unidade escolhida.'] }),
         { status: 400, headers: corsHeaders }
       )
     }
@@ -194,8 +201,8 @@ function validateRelato(data: RelatoData) {
     errors.push('Unidade é obrigatória')
   }
 
-  if (![1, 2, 3].includes(Number(data.ano))) {
-    errors.push('Ano inválido')
+  if (!Number.isInteger(Number(data.ano)) || Number(data.ano) < 1 || Number(data.ano) > 9) {
+    errors.push('Série ou ano inválido')
   }
 
   if (!data.anonimo) {
