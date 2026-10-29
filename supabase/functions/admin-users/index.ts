@@ -56,7 +56,12 @@ Deno.serve(async (req) => {
       if (createYearsError) return jsonResponse({ error: createYearsError }, 400)
 
       const { data: created, error: createError } = await supabase.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { name } })
-      if (createError || !created.user) return jsonResponse({ error: createError?.message || 'Não foi possível criar o acesso' }, 400)
+      if (createError || !created.user) {
+        // Um e-mail só pode pertencer a um usuário
+        const alreadyExists = createError?.code === 'email_exists' || /already (been )?registered|already exists/i.test(createError?.message || '')
+        if (alreadyExists) return jsonResponse({ error: 'Já existe um usuário cadastrado com este e-mail.' }, 409)
+        return jsonResponse({ error: createError?.message || 'Não foi possível criar o acesso' }, 400)
+      }
       const { data: profile, error: profileError } = await supabase.from('admin_profiles').insert({ id: created.user.id, name, role, allowed_years, school: unit.school, must_change_password: true }).select().single()
       if (profileError) {
         await supabase.auth.admin.deleteUser(created.user.id)
